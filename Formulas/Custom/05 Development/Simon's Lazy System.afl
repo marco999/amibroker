@@ -1,12 +1,12 @@
 //TESTING ----------------------------------------------------------------------------
-SetOption( "InitialEquity", 150000 );
+SetOption( "InitialEquity", 250000 );
 SetOption( "FuturesMode", True );
 
 MarginDeposit = 25000;
 RoundLotSize = 1;
-PointValue = 10;
+PointValue = 1;
 SetOption( "CommissionMode", 2 );
-SetOption( "CommissionAmount", 14 + 25 );
+SetOption( "CommissionAmount", 140  );
 
 //System Calcs --------------------------------------------------------------------
 m1 = MA(C, 15);
@@ -28,7 +28,7 @@ E = Equity();
 //n = -100 * (pct_risk / (2 * worst_loss) );
 n = pct_risk / 100 * E / (stoploss * PointValue) * MarginDeposit;
 //ApplyStop(stopTypeLoss, stopModePercent, AMD_max_stop);
-PositionSize = n;
+//PositionSize = n;
 
 //PLOTS -----------------------------------------------------------------------------
 _N(Title = StrFormat(_DEFAULT_NAME() + " | {{NAME}} - {{INTERVAL}} | {{DATE}} | Open %g | High %g | Low %g | Close %g (%.1f%%)"

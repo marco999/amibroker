@@ -8,13 +8,9 @@ PointValue = 10;
 SetOption( "CommissionMode", 2 );
 SetOption( "CommissionAmount", 14 + 25 );
 
-SetTradeDelays( 1, 1, 1, 1 );
-BuyPrice = SellPrice = ShortPrice = CoverPrice = Open;
-
 NumberContracts = 1;
 PositionSize = MarginDeposit * NumberContracts;
 
-_SECTION_BEGIN("AggM+DVO");
 //OptimizerSetEngine("cmae");
 //SYSTEM -----------------------------------------------------------------------
 AMD_V1 = 55; AMD_V2 = 8;
@@ -30,7 +26,6 @@ AMD_bull1 = 50; AMD_bear1 = 100 - AMD_bull1;
 
 AMD_stop_level = 2; 
 AMD_p_trail = 2;
-AMD_max_stop = 1;
 
 //OPTIMIZE VARIABLES (override globals) ----------------------------------------
 //AMD_am1        = Optimize("AMD_am1", 0.5, 0, 1, 0.05);
@@ -79,32 +74,34 @@ dvo_constants = (w1 + w2 + w3 + w4)==1 AND w4 > w1;
 
 //TRAILING STOPS ------------------------------------------------------------------
 TrailStopLong = HHV( C - AMD_stop_level * ATR(AMD_p_trail), AMD_p_trail );
-ProfitTakerLong = EMA( H, AMD_p_trail ) + AMD_stop_level * ATR(AMD_p_trail);
+//ProfitTakerLong = EMA( H, AMD_p_trail ) + AMD_stop_level * ATR(AMD_p_trail);
 
 TrailStopShort = LLV( C + AMD_stop_level * ATR(AMD_p_trail), AMD_p_trail );
-ProfitTakerShort = EMA( L, AMD_p_trail ) - AMD_stop_level * ATR(AMD_p_trail);
+//ProfitTakerShort = EMA( L, AMD_p_trail ) - AMD_stop_level * ATR(AMD_p_trail);
 
 //ENTRY RULES ------------------------------------------------------------------
 Buy = TradeType > 0 AND dvo < 50 AND C > TrailStopLong AND dvo_constants == True AND aggm_constants == 1;
 Short = TradeType <= 0 AND dvo > 50 AND C < TrailStopShort AND dvo_constants == 1 AND aggm_constants == 1;
 
-Sell = C < TrailStopLong OR C > ProfitTakerLong;
-Cover = C > TrailStopShort OR C < ProfitTakerShort;
+Sell = C < Ref(TrailStopLong, -1);// OR C > ProfitTakerLong;
+Cover = C > Ref(TrailStopShort, -1);// OR C < ProfitTakerShort;
 
-Buy = ExRem(Buy, Sell);
-Sell = ExRem(Sell, Buy);
-
-Short = ExRem(Short, Cover);
-Cover = ExRem(Cover, Short);
+Buy   = ExRem( Buy, Sell);
+Sell   = ExRem( Sell, Buy);
+Short = ExRem( Short, Cover);
+Cover = ExRem( Cover, Short);
 
 //POSITION SIZING ---------------------------------------------------------
 stoploss = IIf(TradeType > 0, abs(C-TrailStopLong ), abs(C-TrailStopShort ));
-pct_risk = 2;
+pct_risk = 1;
 E = Equity();
 n = pct_risk / 100 * E / (stoploss * PointValue) * MarginDeposit;
-//ApplyStop(stopTypeLoss, stopModePercent, AMD_max_stop);
-PositionSize = n;
+//PositionSize = n;
 
+SetTradeDelays( 1, 1, 0, 0 );
+BuyPrice = ShortPrice = Open;
+SellPrice = Ref(TrailStopLong, -1);
+CoverPrice = Ref(TrailStopShort, -1);
 
 //PLOTS -----------------------------------------------------------------------------
 P = (O+H+L+C)/4;
@@ -121,21 +118,17 @@ IIf( TradeType>0, colorGreen, IIf( TradeType<=0, colorRed, 0 )),
 styleOwnScale|styleArea|styleNoLabel, -0.5, 100 );
 
 Plot( TrailStopLong, "Trailing stop long", colorBrown, styleLine );
-Plot( ProfitTakerLong, "Profit taker long", colorLime, styleThick );
+//Plot( ProfitTakerLong, "Profit taker long", colorLime, styleThick );
 Plot( TrailStopShort, "Trailing stop short", colorBlueGrey, styleLine );
-Plot( ProfitTakerShort, "Profit taker short", colorRed, styleThick );
+//Plot( ProfitTakerShort, "Profit taker short", colorRed, styleThick );
 
-//PlotShapes(Buy * (shapeCircle + shapePositionAbove), colorGold);
-//PlotShapes(Short * (shapeCircle), colorOrange);
+PlotShapes(Buy * (shapeCircle + shapePositionAbove), colorGold);
+PlotShapes(Short * (shapeCircle), colorOrange);
+PlotShapes(Sell * (shapeHollowCircle + shapePositionAbove), colorGold);
+PlotShapes(Cover * (shapeHollowCircle), colorOrange);
 
-//PlotShapes(Sell * (shapeHollowCircle + shapePositionAbove), colorGold);
-//PlotShapes(Cover * (shapeHollowCircle), colorOrange);
-
-_SECTION_BEGIN("Volume");
 Plot( Volume, _DEFAULT_NAME(), IIf(C<O,colorRed, colorGreen), styleNoTitle | ParamStyle( "Style", styleHistogram | styleOwnScale | styleThick | styleNoLabel, maskHistogram  ), 3 );
-_SECTION_END();
+
 
 SetChartOptions(0,chartShowArrows|chartShowDates);
 SetChartBkGradientFill( ParamColor("BgTop", colorDarkGrey),ParamColor("BgBottom", colorBlack));
-
-_SECTION_END();
