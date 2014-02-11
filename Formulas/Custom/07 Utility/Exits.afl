@@ -1,0 +1,27 @@
+_SECTION_BEGIN("Price");
+SetChartOptions(0,chartShowArrows|chartShowDates);
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} Open %g, Hi %g, Lo %g, Close %g (%.1f%%) {{VALUES}}", O, H, L, C, SelectedValue( ROC( C, 1 ) ) ));
+Plot( C, "Close", ParamColor("Color", colorBlack ), styleNoTitle | ParamStyle("Style") | GetPriceStyle() ); 
+
+P = (O+H+C+L)/4;
+
+MyHold = BarIndex() - SelectedValue(Cum(1));
+Multiple = Optimize("Multiple", 0.1, 0.1, 0.5, 0.05);
+
+ChandHigh = HHV((L+O)/2, MyHold) - (Multiple * ATR(21)); //Chandelier exit line from highest high
+Sell = Cross(ChandHigh, P);
+
+ChandLow = Max(LLV((C+H)/2, MyHold) + (Multiple * ATR(21)), H + Multiple *ATR(21)); //Chandelier exit line from highest high
+Cover = Cross(P, ChandLow);
+
+
+Plot(ChandHigh, "ChandHigh", colorViolet, styleLine);
+Plot(ChandLow, "ChandLow", colorPink, styleLine  );
+
+PlotShapes( Sell  * shapeSmallDownTriangle, colorRed );
+PlotShapes( Cover  * shapeSmallUpTriangle, colorBrightGreen );
+
+
+
+
+_SECTION_END();

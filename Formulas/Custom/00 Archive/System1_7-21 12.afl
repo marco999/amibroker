@@ -1,0 +1,39 @@
+_SECTION_BEGIN("Price");
+SetChartOptions(0,chartShowArrows|chartShowDates);
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} Open %g, Hi %g, Lo %g, Close %g (%.1f%%) Vol " +WriteVal( V, 1.0 ) +" {{VALUES}}", O, H, L, C, SelectedValue( ROC( C, 1 )) ));
+Plot( C, "Close", ParamColor("Color", colorBlack ), styleNoTitle | styleCandle); 
+if( ParamToggle("Tooltip shows", "All Values|Only Prices" ) )
+{
+ ToolTip=StrFormat("Open: %g\nHigh:  %g\nLow:   %g\nClose:  %g (%.1f%%)\nVolume: "+NumToStr( V, 1 ), O, H, L, C, SelectedValue( ROC( C, 1 )));
+}
+_SECTION_END();
+
+_SECTION_BEGIN("System 1");
+SetPositionSize( 10000, spsValue );
+P = C;//(H+L)/2;
+
+A = Wilders(P, 5);
+B = Wilders(P, 15);
+C = EMA(P, 60);
+
+Bull = B>C;
+Bear = C>B;
+
+Plot(A, "EMA(7)", colorRed, styleLine);
+Plot(B, "EMA(21)", colorBlue, styleLine);
+Plot(C, "EMA(60)", colorGreen, styleLine);
+
+Buy = Cross(A,B);// AND Bull;
+//Sell = (A > P AND B > A) OR Cross(A, P); //OR Cross(Graph1, Close); //Use the appropriate Graph1, Graph2 or Graph3 for whichever Chandelier exit you wish
+Sell = Cross(B,A);
+
+//Buy = ExRem( Buy, Sell );
+//Sell = ExRem( Sell, Buy );
+
+Short = Sell;
+Cover = Buy;
+
+PlotShapes( Sell  * shapeDownArrow, colorRed );
+PlotShapes( Buy  * shapeUpArrow, colorGreen );
+
+_SECTION_END();

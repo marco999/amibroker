@@ -1,0 +1,16 @@
+SetBarsRequired(200, 0);
+
+#include <SAM.afl>
+
+/*==============================================================================
+    User-defined Functions
+==============================================================================*/
+Cutoff = Optimize("Cutoff",8, 1, 20, 1); FP = Optimize("FP",0.01, 0.01, 1, 0.01); Lgamma = 0.5;
+
+// CyclePeriod
+Med = (H+L)/2;
+pds = sbDC(Med);
+Filt1 = SmoothedAdaptiveMomentum(Med, Cutoff, pds);
+
+Plot(Filt1, "SAM(" + pds + ") Barcount: " + BarCount, colorRed);
+Plot(0, "", colorBlack, styleThick);	

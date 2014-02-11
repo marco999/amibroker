@@ -1,0 +1,46 @@
+_SECTION_BEGIN("Price");
+SetChartOptions(0,chartShowArrows|chartShowDates);
+Plot( C, "Close", ParamColor("Color", colorBlack ), styleNoTitle | styleLine); 
+if( ParamToggle("Tooltip shows", "All Values|Only Prices" ) )
+{
+ ToolTip=StrFormat("Open: %g\nHigh:  %g\nLow:   %g\nClose:  %g (%.1f%%)\nVolume: "+NumToStr( V, 1 ), O, H, L, C, SelectedValue( ROC( C, 1 )));
+}
+_SECTION_END();
+
+_SECTION_BEGIN("System 2");
+
+P = C;
+
+A1 = MA(P, 15);
+A2 = MA(P, 30);
+A3	= MA(P, 60);
+
+Bull = A2>A3;
+Bear = A3>A2;
+
+Buy  = (P > A1 AND Bull) OR Cross(P, A3);
+
+
+HHH = BarIndex() - ValueWhen(P > Ref(P,-1) AND Ref(P, -1) < Ref(P, -2),BarIndex(),1);
+HHHLB = Max(HHH, 1);
+
+LLL = BarIndex() - ValueWhen(P < Ref(P,-1) AND Ref(P, -1) > Ref(P, -2),BarIndex(),1);
+LLLLB = Max(LLL, 1);
+
+Sell  = IIf(P < Ref(P, -HHHLB), 1, 0);
+Cover  = IIf(P > Ref(P, -LLLLB), 1, 0);
+
+Buy = ExRem(Buy, Sell);
+Sell = ExRem(Sell, Buy);
+
+Plot(A1, "MA(15)", colorRed, styleLine);
+Plot(A2, "MA(30)", colorBlue, styleLine);
+Plot(A3, "MA(60)", colorGreen, styleLine);
+
+PlotShapes( Sell  * shapeDownArrow, colorRed );
+PlotShapes( Buy  * shapeUpArrow, colorGreen );
+
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} Open %g, Hi %g, Lo %g, Close %g \nSellLevel %g (%.1f%%) Vol " 
++WriteVal( V, 1.0 ) +" {{VALUES}}", O, H, L, C, Ref(P, -HHHLB), SelectedValue( ROC( C, 1 )) ));
+
+_SECTION_END();

@@ -1,0 +1,8 @@
+#include<PercentRank.afl>;
+
+M1 =  MA( AdvIssues() - DecIssues(), 96)/80;
+MABI = PercentRank(M1, 480);
+
+Plot(MABI, "MABI", IIf(MABI>50,colorWhite, colorGrey40), styleLine);
+Plot(50, "", colorGrey50, styleNoLabel|styleNoTitle);
+SetChartBkGradientFill( ParamColor("BgTop", colorBlueGrey),ParamColor("BgBottom", colorBlack));

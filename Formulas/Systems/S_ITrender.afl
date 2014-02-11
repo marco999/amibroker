@@ -1,0 +1,107 @@
+_SECTION_BEGIN("S_BETA");
+SetBarsRequired(30,0);
+
+#include<ITrend.afl>
+
+//Optimize
+ATR_multiple = Optimize("A multi",2.4, 1.5, 8, 1); 
+alpha = Optimize("alpha",0.7, 0.05, 1, 0.05); 
+snrlevel = 6;// set to 6 but very rarely below 6db for index
+Cgperiod = 10;//Optimize("CG period", 10, 5, 20, 1);
+
+// CyclePeriod
+Med = (H+L)/2;
+pds = sbDC(Med);
+bi = BarIndex();
+arrayitem = SelectedValue( bi ) - bi[ 0 ]; 
+pdsindex = floor(IIf(pds[arrayitem]>0, pds[arrayitem], 5));
+
+//Trading Mode
+Trending = IIf(pds > 20, 1, 0);
+Cycling = NOT Trending;
+
+//--------------------------------------------
+//Rules for Trend Follower
+//--------------------------------------------
+//SAM
+Filt1 = ITrend(Med, alpha );
+
+//SNR
+SNR = sbSNR(Med);
+
+//Buy/Sell Rules - trending
+myTrendBuy = Trending AND Filt1 > Med AND SNR > snrlevel;
+myTrendShort = Trending AND Filt1 < Med AND SNR > snrlevel;
+
+//----------------------------------------------
+//Rules for sinewave Indicator
+//----------------------------------------------
+sine = sbSine(Med);
+
+//Buy/Sell Rules - cycling
+myCycleBuy = 0;//Cycling AND Cross(sbleadsine, sine) AND SNR > snrlevel;
+myCycleShort = 0;// Cycling AND Cross(sine, sbleadsine) AND SNR > snrlevel;
+
+//Exit rules
+
+stoplong = scAtrBandLong(H,atr_multiple*ATR(pdsindex));
+stopshort = scAtrBandShort(L,atr_multiple*ATR(pdsindex));
+myCover = IIf(trending,Cross(Med,stopshort), myCycleBuy);
+mySell = IIf(trending,Cross(stoplong,med), myCycleShort) ;
+
+
+//System Buy/Sell Rules
+Cover = ExRem(myCover ,myTrendShort OR myCycleShort);
+Sell = ExRem(mySell, myTrendBuy OR myCycleBuy);
+Buy =  myTrendBuy OR myCycleBuy;
+Short = myTrendShort OR myCycleShort;
+
+//Plots
+//---------------------------------------------
+SetChartOptions(0,chartShowArrows|chartShowDates);
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} Open %g, Hi %g, Lo %g, Close %g (%.1f%%) ModATR %g {{VALUES}} DCycle %g", O, H, L, C, SelectedValue( ROC( C, 1 ) ), atr_multiple*ATR(pdsindex), pdsindex ));Plot( C, "Close", ParamColor("Color", colorBlack ), styleNoTitle | ParamStyle("Style") | GetPriceStyle() ); 
+Plot(stoplong, "", 3, 1);
+Plot(stopshort, "", 9, 1);
+
+
+//PlotShapes( Buy * shapeSmallCircle, colorGreen );
+//PlotShapes( Short * shapeSmallCircle, colorRed,0, Graph0, 12  );
+PlotShapes( Sell  * shapeCircle, 3 );
+PlotShapes( Cover * shapeCircle, 9, 0, Graph0, 12 );
+//---------------------------------------------
+
+//System Tests
+SetTradeDelays(1,1,1,1);
+BuyPrice = O;
+SellPrice = O;
+// Set the number of positions.
+NumberPositions = 10;
+SetOption("MaxOpenPositions", NumberPositions);
+// Allocate available funds equally among them.
+PositionSize = -200 / NumberPositions;
+Lookback = 5;
+PositionScore = -ROC(C,Lookback);
+
+Filter = 1;
+AddColumn( BarCount, "Bars", 1.0 );
+
+//Work out the growth rate
+SetCustomBacktestProc("");
+
+if (Status("action") == actionPortfolio)
+{
+	bo = GetBacktesterObject();
+
+	bo.backtest();
+
+	st = bo.getperformancestats(0);
+
+	expectancy = st.getvalue("AllAvgProfitLossPercent") ;
+
+	ntrades = 1/ (st.getvalue("AllAvgBarsHeld") / 252); 
+  	growth = 1 + expectancy;
+   	bo.addcustommetric("TpY", ntrades );
+	bo.addcustommetric("R", expectancy );
+
+	}
+_SECTION_END();

@@ -1,0 +1,53 @@
+SetChartOptions(0,chartShowArrows|chartShowDates);
+SetChartBkGradientFill( ParamColor("BgTop", colorLightGrey),ParamColor("BgBottom", colorDarkRed));
+
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} Open %g, Hi %g, Lo %g, Close %g (%.1f%%) {{VALUES}}", O, H, L, C, SelectedValue( ROC( C, 1 ) ) ));
+//Plot( C, "Close", ParamColor("Color", colorBlack ), styleNoTitle | ParamStyle("Style") | GetPriceStyle() ); 
+
+TimeFrameSet(inDaily);
+dailyATR20 = ATR(20);
+TimeFrameRestore();
+
+
+dailyC = TimeFrameCompress(C, inDaily);
+dailyH = TimeFrameCompress(H, inDaily, compressHigh);
+dailyL = TimeFrameCompress(L, inDaily, compressLow);
+//d1Range = 
+eC = TimeFrameExpand(dailyC, inDaily);
+eH = TimeFrameExpand(dailyH, inDaily);
+eL = TimeFrameExpand(dailyL, inDaily);
+//Plot(eC, "ec", colorPink);
+//Plot(eH, "eH", colorPlum);
+//Plot(eL, "eL", colorYellow);
+
+d1range = eH - eL;
+d2high = HHV(eH,2);
+d2low = LLV(eL, 2);
+d2range = d2high - d2low;
+
+//Simple Range Exhaustion System
+//1. Calculate the daily 20 period average range.
+eATR20 = TimeFrameExpand(dailyATR20, inDaily);
+Plot(eATR20, "eATR20", colorWhite);
+Plot(d1range, "d1range", colorYellow);
+Plot(d2range, "d2range", colorRed);
+
+
+//2. Today's range must expand to exceed #1.
+B1 = d1Range > eATR20;
+//3. The 2-Day combined range must expand to exceed 2.2 times of #1.
+B2  = d2Range > 2 * eATR20;
+//4. Go long at market if the market is trading in the lower portion of the 2-Day range.
+B3 = d2high - C > C - d2low;
+
+Buy = B1 AND B2 AND B3;
+
+
+//5. Protective stop is placed at 0.35 times #1 from the entry price.
+//6. if NOT stopped out, exit by 16:00 Eastern Time. i.e. a Day trading system
+Sell = C < (ValueWhen(Buy, C) - 0.35*eATR20) OR TimeNum() == 163000;
+
+Buy = ExRem(Buy, Sell);
+Sell = ExRem(Sell, Buy);
+
+SetPositionSize(1, spsShares);

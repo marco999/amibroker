@@ -1,0 +1,86 @@
+#include <SAM.afl>
+
+//
+//	EntryIdentificationII.afl
+//
+//	Second method of analyzing entries.
+//	Identify ideal entries, adjust indicators to
+//	find a good match.
+//
+SetTradeDelays(0,0,0,0);
+BuyPrice = C;
+SellPrice = C;
+
+//	This code looks into the future to compute
+//	potential gain and potential loss from the present.
+//	Gain is computed from Close of entry day
+//	to Close of exit day.
+//	Risk is computed from Close of entry day
+//	to lowest Low while in trade.
+DaysAhead = Param("DaysAhead",5,1,20,1);
+GainAhead = 100.0 * (Ref(C,DaysAhead) - C) / C;
+RiskAhead = 100.0 * (C - LLV(Ref(L,DaysAhead),DaysAhead)) / C;
+
+DesiredProfit = Param("DesiredProfit",5,0.5,10,0.5);
+MaximumRisk = Param("MaximumRisk",3,0.5,10,0.5);
+
+IdealEntry = (GainAhead >= DesiredProfit) 
+					AND (RiskAhead <= MaximumRisk);
+
+HoldDays = Param("HoldDays",3,1,60,1);
+
+IdealExit = BarsSince(IdealEntry) >= HoldDays;
+
+//	Remove extra exits, but show all entries.
+IdealExit = ExRem(IdealExit, IdealEntry);
+
+IdealShape = IdealEntry * shapeHollowUpTriangle 
+				+ IdealExit * shapeHollowDownTriangle;
+IdealColor = IIf(IdealEntry,colorPaleGreen,colorPink);
+IdealPosition = IIf(IdealEntry,Low,High);
+PlotShapes(IdealShape,IdealColor,0,IdealPosition);
+
+//	The ideal part is above -- the candidate indicator is below
+//-------------------------------------------------------------
+//Optimize
+a1 = 6.2;//Optimize("A1",7, 1, 8, 0.1); 
+p1 = 12;//Optimize("P1",21, 1, 50, 5); 
+Cutoff = 10;//Optimize("Cutoff",10, 1, 20, 2); 
+snrlevel = 4;//Optimize("SNR",4, 4, 14, 0.5); 
+
+// CyclePeriod
+Med = (H+L)/2;
+pds = sbDC(Med);
+
+//Rules
+//SAM
+Band = 0;
+Filt1 = SmoothedAdaptiveMomentum(Med, Cutoff, pds*p1);
+
+//SNR
+SNR = sbSNR(Med);
+
+//Buy/Sell Rules
+myBuy = Filt1 > 0 AND SNR > snrlevel;
+myShort  = Filt1 < 0 AND SNR > snrlevel;
+
+stoplong = scAtrBandLong(H,a1*ATR(EndValue(pds)));
+stopshort = scAtrBandShort(L,a1*ATR(EndValue(pds)));
+myCover = Cross(Med,stopshort);
+mySell = Cross(stoplong,med);
+
+IndicatorCover = ExRem(myCover ,myShort);
+IndicatorSell = ExRem(mySell, myBuy);
+IndicatorBuy =  myBuy;
+IndicatorShort = myShort;
+
+
+//-------------------------------------------------------------
+
+IndicatorShape = IndicatorBuy * shapeUpArrow ;
+IndicatorColor = colorGreen;
+IndicatorPosition = IIf(IndicatorBuy,Low,High);
+PlotShapes(IndicatorShape,IndicatorColor,0,IndicatorPosition);
+
+Plot(C, "C", colorBlack, styleCandle);
+GraphXSpace = 5;

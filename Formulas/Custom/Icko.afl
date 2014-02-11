@@ -1,0 +1,71 @@
+_SECTION_BEGIN("Nazgul 1");
+
+P = (O+H+L+C)/4;
+
+SetBarsRequired(200, 0);
+
+X1 = ATR(7);
+//SYSTEM -----------------------------------------------------------------------
+C1 = 7;
+C2 = 21;
+C3 = 89;
+
+SetChartOptions(0,chartShowArrows|chartShowDates);
+SetChartBkGradientFill( ParamColor("BgTop", colorBlue),ParamColor("BgBottom", colorDarkBlue));
+//ShortPrice = BuyPrice = CoverPrice = SellPrice = Ref(Open,1);
+
+Plot( C, "Close", ParamColor("Color", colorBlack ), styleCandle); 
+
+ToolTip=StrFormat("Open: %g\nHigh:  %g\nLow:   %g\nClose:  %g (%.1f%%)\nVolume: "+NumToStr( V, 1 ), O, H, L, C, SelectedValue( ROC( C, 1 )));
+
+//ENTRY RULES ------------------------------------------------------------------
+C2 = 1; //range of dangling candle
+
+StopLevel = 1 - Param("trailing stop %", 3, 0.1, 10, 0.1)/100;
+
+
+HHH = BarIndex() - ValueWhen(H > Ref(H,-1) AND Ref(H, -1) < Ref(H, -2),BarIndex(),1);
+HHHLB = Max(HHH, 1);
+
+LLL = BarIndex() - ValueWhen(L < Ref(L,-1) AND Ref(L, -1) > Ref(L, -2),BarIndex(),1);
+LLLLB = Max(LLL, 1);
+
+CloseOnCrossLong = ValueWhen(C > Ref(C, -LLLLB), Max(C,O));
+Buy = C > CloseOnCrossLong;
+
+CloseOnCrossShort = Ref(ValueWhen(C < Ref(C, -HHHLB), Min(C,O)),0);
+Sell = C < CloseOnCrossShort;
+
+//Plot(Zig((C+H+L)/3,1),"Zig", colorYellow);
+
+upbar = C > Ref( H, -1 );
+downbar = C < Ref( L, -1 );
+
+/* Colourized price bars drawn here */
+Graph0 = Close;
+
+barcolor = IIf( downbar, 4, IIf( upbar, 5, 1 ) );
+Graph0BarColor = ValueWhen( barcolor != 0, barcolor );
+// Only allowed in recent Beta
+//SetBarFillColor = ValueWhen( barcolor != 0, barcolor );
+
+PlotShapes(Buy * (shapeCircle + shapePositionAbove), colorGold);
+PlotShapes(Sell * (shapeHollowCircle), colorGold);
+
+SetPositionSize(1, spsShares);
+
+//TradeType = Flip(Buy, Short);
+//SetChartBkColor(LastValue(IIf( TradeType>0, colorDarkGreen, colorDarkRed)));
+
+//_N(Title = StrFormat("      {{NAME}} - {{INTERVAL}} {{DATE}} P %g, Open %g High %g Low %g Close %g (%.1f%%) \n"
+//  + ""
+//  + "ALSIBuy: %g ALSISell %g LastPL: %g LastValueALSI: %g OpenPL %g"
+//  + "\n      Vol: "
+//  + WriteVal( V, 1.0 ) +" {{VALUES}}", P, O, H, L, C, SelectedValue( ROC( C, 1 )), alsibuy, alsisell, alsisell - alsibuy, LastValue(alsi), IIf(TradeType>0,LastValue(alsi) - alsibuy, alsisell-LastValue(alsi)) ));
+//Get the futures price
+_SECTION_END();
+
+
+_SECTION_BEGIN("Volume");
+//Plot( Volume, _DEFAULT_NAME(), ColorHSB(Param("Hue", 128, 0, 256, 1), 255,116), styleNoTitle | ParamStyle( "Style", styleHistogram | styleOwnScale | styleThick | styleNoLabel, maskHistogram  ), 2 );
+_SECTION_END();

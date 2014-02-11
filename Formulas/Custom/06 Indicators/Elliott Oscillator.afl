@@ -1,0 +1,9 @@
+P = (O+H+L+C)/4;
+PP=TimeFrameCompress(P,in5Minute * 6);
+hBar = TimeFrameExpand(WMA(PP,5)- WMA(PP,34),in5Minute * 6);
+//HBar = MA(P,5)-MA(P,34);
+Plot(hBar, _DEFAULT_NAME(),
+IIf(hBar>=0, ParamColor("Up Color", colorGreen), ParamColor("Down Color", colorRed)),
+ParamStyle( "Style", styleHistogram | styleThick)
+);
+//Plot(ROC(HBar,7),"g",colorBlue)

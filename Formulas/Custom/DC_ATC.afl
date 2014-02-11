@@ -1,0 +1,11 @@
+P = (H+L+C+O)/4;
+C1 = ( sbDC(P));
+N = Cum(1);
+
+for( i = 0; i < BarCount; i++ ) 
+{
+	A1[i] = LastValue(ValueWhen(N==i, TEMA(P, C1[i]) ));
+}	
+
+AddToComposite(A1, "~TEMA_DC_"+Name(), "X");
+Buy=1;

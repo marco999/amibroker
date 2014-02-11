@@ -1,0 +1,76 @@
+//TESTING ----------------------------------------------------------------------------
+SetOption( "InitialEquity", 100000 );
+SetOption( "FuturesMode", True );
+
+MarginDeposit = 25000;
+RoundLotSize = 1;
+PointValue = 10;
+SetOption( "CommissionMode", 2 );
+SetOption( "CommissionAmount", 14 + 25 );
+
+//System Calcs --------------------------------------------------------------------
+m1 = MA(C, 15);
+m2 = MA(C, 30);
+m3 = MA(C, 60);
+
+stoploss = C - Ref(m1, -1);
+
+SetTradeDelays( 0, 0, 0, 0 );
+BuyPrice = ShortPrice = Close;
+SellPrice = CoverPrice = Ref(m1, -1);
+
+NumberContracts = 1;
+PositionSize = MarginDeposit * NumberContracts;
+
+//PLOTS -----------------------------------------------------------------------------
+_N(Title = StrFormat(_DEFAULT_NAME() + " | {{NAME}} - {{INTERVAL}} | {{DATE}} | Open %g | High %g | Low %g | Close %g (%.1f%%)"
+  + "\n      PositionSize: " + WriteVal( PositionSize, 1.0 ) + " Stoploss: " + WriteVal(stoploss) + " |                                                                                                              MA15(-1): " + WriteVal (Ref(m1, -1))
+  + "\n      Vol: " + WriteVal( V, 1.0 ) +" {{VALUES}}", O, H, L, C, SelectedValue( ROC( C, 1 )) ));
+
+Plot( C, "Close", colorWhite, styleCandle); 
+
+Plot(m1, "MA15", colorRed, styleLine);
+Plot(m2, "MA30", colorGreen, styleLine);
+Plot(m3, "MA60", colorBlue, styleLine);
+
+Plot( 2, "Primary Trend",
+IIf( m2>m3, colorGreen, IIf( m2<m3, colorRed, 0 )),
+styleOwnScale|styleArea|styleNoLabel, -0.5, 100 );
+
+SetChartOptions(0,chartShowArrows|chartShowDates);
+SetChartBkGradientFill( ParamColor("BgTop", colorDarkGrey),ParamColor("BgBottom", colorBlack));
+
+//SYSTEM RULES ----------------------------------------------------------------------
+AlertBuy1 = C > m1 AND m2 > m3;
+
+Buy = 	C > Ref(C, -1)
+		 	AND C > O
+			AND Ref(C, -1) > Ref(m1, -1)
+			AND Ref(m2,-1) > Ref(m3,-1);
+
+Sell = L < Ref(m1, -1);
+
+Short = C < Ref(C, -1) 
+			AND C < O 
+			AND Ref(m1, -1) > Ref(C, -1)
+			AND Ref(m3,-1) > Ref(m2,-1);
+
+Cover = H > Ref(m1, -1);
+
+AlertBuy1 = ExRem(AlertBuy1, Sell);
+Buy   = ExRem( Buy, Sell);
+Sell   = ExRem( Sell, Buy);
+Short = ExRem( Short, Cover);
+Cover = ExRem( Cover, Short);
+
+// -- shapes on the chart
+
+PlotShapes(AlertBuy1 * (shapeCircle + shapePositionAbove), colorGreen);
+PlotShapes(Buy * (shapeCircle + shapePositionAbove), colorGold);
+PlotShapes(Short * (shapeCircle), colorOrange);
+
+// --- alerts
+AlertIf(AlertBuy1, "SOUND C:\\Windows\\Media\\Ding.wav", "Audio alert", 2 );
+
+PlotShapes(Sell * (shapeHollowCircle + shapePositionAbove), colorGold);
+PlotShapes(Cover * (shapeHollowCircle), colorOrange);

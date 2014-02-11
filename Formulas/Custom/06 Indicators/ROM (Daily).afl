@@ -1,0 +1,15 @@
+_SECTION_BEGIN("ROM  1");
+a1 = MA (C, 200);
+x = C/a1;
+
+bullup = Param("Bull High", 1.2, 1, 2, 0.01);
+bulldown = Param("Bull Low", 0.8, 0.8, 1.2, 0.01);
+bearup = Param("Bear High", 1.0, 0.8, 1.2, 0.01);
+beardown = Param("Bear Low", 0.2, 0.2, 1.1, 0.01);
+
+Plot(x, "ROM", colorBlue, styleLine);
+//Plot(bullup, "Bull High", colorBlack);
+//Plot(bulldown, "Bull Low", colorBlack);
+//Plot(bearup, "Bear Low", colorRed);
+//Plot(beardown, "Bear Low", colorRed);
+_SECTION_END();

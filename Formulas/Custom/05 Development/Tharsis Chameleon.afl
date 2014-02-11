@@ -1,0 +1,118 @@
+_SECTION_BEGIN("Tharsis Chameleon");
+
+SetPositionSize(1, spsShares);
+
+P = (H+L+C)/3;
+
+//Trend/Chop Filter;
+//This is extrapolated BBand, expanded using open value
+C5 = 40;
+C6 = 5;//Optimize("C6", 24, 1, 48, 1);  // 2 hour seems to work best (CURVE FIT??)
+AMF = TimeFrameCompress(O, in5Minute * C6, compressOpen); //must use Open or will future peek
+AMF_T = TimeFrameExpand(BBandTop(AMF, 3, 1), in5Minute * C6, expandFirst);
+AMF_B = TimeFrameExpand(BBandBot(AMF, 3, 1), in5Minute * C6, expandFirst);
+
+w = AMF_T - AMF_B;
+wx = ROC(w,C6);  //use change period equal to extrapolated BBand so that you pick up the step in value
+
+Plot(AMF_T, "AMF_T "+w, colorRed);
+Plot(AMF_B, "AMF_B "+wx, colorRed);
+
+//It's trending if the BBands are widening. Direction is from ADX indicator
+uptrend=wx>0 AND PDI(C6)>MDI(C6);
+downtrend=wx>0 AND PDI(C6)<MDI(C6);
+
+// Kauffman AMA - use when trending
+
+T1=13;//Optimize("C7", 24, 1, 48, 1);//Param("Period",7,5,25,1); //Periods
+V2=2;//Optimize("C8", 24, 1, 48, 1);//Param("Fast",2,2,20,1); //fast
+V3=13;//Optimize("C9", 24, 1, 48, 1);//Param("Slow",5,15,50,1); //slow
+F1=2/(V2+1);
+S1=2/(V3+1);
+dir=abs(P-(Ref(P,-T1)));
+Vol=Sum(abs(P-(Ref(P,-1))),T1);
+ER=dir/Vol; //(C-(Ref(C,-T1)))/Sum(abs(C-(Ref(C,-1))),T1));
+A1=ER*(F1-S1)+S1;
+A2=A1^2;
+KAMA=AMA2(P,A2,1-A2);
+Title="KAMA2 = " + WriteVal(KAMA) + " Periods=" + WriteVal(T1,1.0) 
++ " ROC= " + WriteVal(ROC(KAMA,1)) ;
+
+KAMA = MA(P, C6);
+
+//Trigger is a Butterworth filter - basically low lag delay of the signal
+Trigger = (KAMA+2* Ref(KAMA,-1) + 2*Ref(KAMA,-2)+Ref(KAMA,-3))/6;
+
+Trigger = EMA(P, C5);
+
+//Plot(KAMA,"KAMA",ParamColor("KAMA", colorYellow), styleLine);
+Plot(Trigger,"KAMA Trig",ParamColor("KAMA Trig", colorAqua), styleLine);
+
+
+/////////////////PloPrice//////////////////////
+GraphXSpace=2;
+SetChartOptions(0,chartShowArrows|chartShowDates);
+SetChartBkGradientFill( ParamColor("BgTop", colorGrey40),ParamColor("BgBottom", colorIndigo));
+Plot(C,"Close",ParamColor("Price", colorBlack),styleCandle);
+
+//Naz Rules to prevent whipsaw;
+B1 = KAMA > Trigger;
+CloseOnCrossLong = ValueWhen(Cross(KAMA, Trigger), C);
+B2 = C > CloseOnCrossLong;
+
+S1 = KAMA < Trigger;
+CloseOnCrossShort = ValueWhen(Cross(Trigger, KAMA), C);
+S2 = C < CloseOnCrossShort;
+
+BuyTrend = B1 AND B2;
+ShortTrend = S1 AND S2;
+SellTrend = ShortTrend ;
+CoverTrend = BuyTrend ;
+
+//Williams %R
+function PercentR( periods )
+{
+ return -100 * ( HHV( H, periods ) - C )/( HHV( H, periods ) - LLV( L, periods ) ); 
+}
+
+Chop=RSI(15);//Optimize("C10", 24, 1, 48, 1)
+
+BuyChop = 0;//Cross(Chop, 30);
+ShortChop  =0;// Cross(70, Chop);
+
+CoverChop = BuyChop;
+SellChop = ShortChop;
+
+//System Overall Entry/Exit Rules
+Buy = IIf(uptrend, BuyTrend ,IIf(NOT downtrend, BuyChop,0));
+Short = IIf(downtrend, ShortTrend ,IIf(NOT uptrend, ShortChop,0));
+
+Buytype = Flip(BuyTrend, ShortTrend);
+
+Cover = Buy;
+Sell = Short;
+
+Buy = ExRem(Buy, Sell);
+Sell = ExRem(Sell, Buy);
+
+Short = ExRem(Short, Cover);
+Cover = ExRem(Cover, Short);
+
+PlotShapes(Buy * (shapeSmallUpTriangle), colorGold);
+//PlotShapes(Sell * (shapeHollowCircle), colorOrange);
+
+//PlotShapes(Cover * (shapeHollowCircle), colorGold);
+PlotShapes(Short * (shapeSmallDownTriangle), colorOrange);
+
+Plot( 2, /* defines the height of the ribbon in percent of pane width
+*/"ribbon "+Buytype,
+IIf( uptrend, colorGreen, IIf( downtrend, colorRed, 0 )), /* choose color */
+styleOwnScale|styleArea|styleNoLabel, -0.5, 100 );
+
+_N(Title = StrFormat("Tharsis Chameleon  {{NAME}} - {{INTERVAL}} {{DATE}} P %g, Open %g High %g Low %g Close %g (%.1f%%) \n"
+  + "\nVol: "
+  + WriteVal( V, 1.0 ) +" {{VALUES}}", P, O, H, L, C, SelectedValue( ROC( C, 1 )) ));
+
+
+
+_SECTION_END();

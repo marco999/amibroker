@@ -1,0 +1,122 @@
+#include<HeatZone.afl>;
+#include<DVTR.afl>;
+#include<GOsc.afl>;
+A240 = MA(C, 240);
+Plot(A240, "MA240", colorYellow);
+
+_SECTION_BEGIN("Price");
+SetChartOptions(0,chartShowArrows|chartShowDates);
+SetChartBkGradientFill( ParamColor("BgTop", colorLightGrey),ParamColor("BgBottom", colorDarkBlue));
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} Open %g, Hi %g, Lo %g, Close %g (%.1f%%) Vol " +WriteVal( V, 1.0 ) +" {{VALUES}}", O, H, L, C, SelectedValue( ROC( C, 1 )) ));
+Plot( C, "Close", ParamColor("Color", colorBlack ), styleNoTitle | styleCandle); 
+
+//TRADING STRATEGY
+/*Ironically for the SP500, the use of a moving average is most 
+effective in the trendless zone, while buying on small dips is 
+more effective in uptrends, AND shorting on small rallies is more 
+effective in down trends except when volatility is very High
+
+Looks like opp might be true for JSE
+*/
+
+SetPositionSize(1, spsShares);
+//H_4hr  = TimeFrameCompress(H, inHourly * 4);
+//L_4hr  = TimeFrameCompress(L, inHourly * 4);
+//C_4hr  = TimeFrameCompress(C, inHourly * 4);
+HZ 		= Ref(HeatZone(H, L, C, 480),-1);
+
+//DR 		= DVTR(ROC(DVTR(C, 7, 240, 1),1),7,240,1);;
+DR 		= DVTR(C, 21, 480, 7);
+
+
+GO 		= GOsc(C, 480);
+
+
+Buy =  
+IIf(HZ==colorDarkYellow OR HZ==colorYellow, 0, 
+ IIf(HZ==colorGreen OR HZ==colorBrightGreen, 0,
+  IIf(HZ==colorOrange OR HZ==colorRed, ROC(DR,1)>0 AND A240>C,
+	0)));
+
+
+Sell =
+IIf(HZ==colorDarkYellow OR HZ==colorYellow, 0, 
+ IIf(HZ==colorOrange OR HZ==colorRed, 0,
+  IIf(HZ==colorGreen OR HZ==colorBrightGreen, ROC(DR,1)<0 AND A240<C,
+	0)));
+
+Buy = ExRem(Buy, Sell);
+Sell = ExRem(Sell, Buy);
+
+Short = Sell;
+Cover = Buy;
+
+
+/*
+1. if you get in on a yellow, wait for next yellow to get out again (if ROC low then only if P<entrypoint)
+
+Yellow entry rules: roc DVR quite big  (PRANK ROC)
+
+2. you go short on a green by using GO neg ROC 
+you then wait for the next red or second yellow to get out. 
+When you enter the exit zone and the GO is neg then stay in until it turns for you. 
+This is then opposite entry point
+If you hit another green: get out of the market and wait for another entry
+*/
+/*
+Buy=0;
+Sell = 0;
+Short = 0;
+Cover = 0;
+inLong = 0;
+	inShort = 0;
+	YellowCounter = 0;
+
+for( i = 2; i < BarCount; i++ ) 
+{
+	if( (HZ[i]==colorRed OR HZ[i]==colorOrange) AND (DR[i]-DR[i-1])>1 AND inLong==0 AND DR[i] <=20)
+	{
+		Buy[i] = 1;
+		inLong = 1;
+	}
+
+	
+	if ( inLong==1 AND (HZ[i]==colorGreen OR HZ[i]==colorBrightGreen) AND (DR[i]-DR[i-1])<1 AND DR[i] >=80)
+	{
+		inLong = 0;
+		Sell[i] = 1;
+	}
+	
+
+
+	if( (HZ[i]==colorGreen OR HZ[i]==colorBrightGreen) AND (DR[i]-DR[i-1])<1 AND inShort==0 AND DR[i] >=80)
+	{
+		Short[i] = 1;
+		inShort = 1;
+	}
+	else if ( inLong==1 AND (HZ[i]==colorYellow OR HZ[i]==colorDarkYellow) AND (DR[i]-DR[i-1])<1 )
+	{
+		//this needs to be the SECOND yellow since the buy, put in a counter
+		Short[i] = 1;
+		inShort = 1;
+		inLong = 0;
+	}
+	
+	if ( inShort==1 AND (HZ[i]==colorRed OR HZ[i]==colorOrange) AND (DR[i]-DR[i-1])>1 AND DR[i] <=50)
+	{
+		inShort = 0;
+		Cover[i] = 1;
+	}
+
+	
+}
+*/
+//Plot(Buy, "Buy", colorLime, styleOwnScale|styleArea|styleNoLabel, 0, 10 );
+//Plot(Sell, "Sell", colorRed, styleOwnScale|styleArea|styleNoLabel, 0, 10 );
+
+//PlotShapes(Buy * (shapeCircle + shapePositionAbove), colorGold);
+//PlotShapes(Sell * (shapeHollowCircle), colorGold);
+
+//PlotShapes(Short * (shapeCircle), colorOrange);
+//PlotShapes(Cover * (shapeHollowCircle), colorOrange);
+_SECTION_END();

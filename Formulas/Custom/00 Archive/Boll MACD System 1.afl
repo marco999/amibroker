@@ -1,0 +1,73 @@
+_SECTION_BEGIN("RSI MTF 1");
+SetBarsRequired(20, 0);
+//Initial Chart --------------------------------
+
+P = C;
+//SYSTEM -----------------------------------------------------------------------
+C1 = 7;//Optimize("C1", 7, 2, 30, 1);//periods for MA
+C2 = C1 * 3;//periods for MA
+C3 = 1;//range of dangling candle
+C4 = 3;//3.5;//ATR multiple
+FirstProfitTarget = 2;
+
+X1 = ATR(15);
+
+A1 = 1/C1*C + (C1-1)/C1*MA(Ref(P,-1), C1);
+A2 = 1/C2*C + (C2-1)/C2*MA(Ref(P,-1), C2);
+SetChartOptions(0,chartShowArrows|chartShowDates);
+SetChartBkGradientFill( ParamColor("BgTop", colorBlue),ParamColor("BgBottom", colorDarkBlue));
+
+Plot( C, "Close", ParamColor("Color", colorBlack ), styleCandle); 
+Plot( A1, "EMA7",colorYellow, styleLine  );
+Plot( A2, "EMA21",colorAqua, styleLine  );
+
+up = C + X1*C4;
+down = C - X1*C4;
+
+PlotOHLC( up,up,down,down, "StopL", ColorHSB( Param("Hue", 128, 0, 255 ), 
+           Param("Saturation", 128, 0, 255 ),
+           Param("Brightness", 255, 0, 255 ) ), styleCloud | styleNoLabel ); 
+
+PlotOHLC( down,down,up,up, "StopH", ColorHSB( Param("Hue2", 128, 0, 255 ), 
+           Param("Saturation", 128, 0, 255 ),
+           Param("Brightness", 255, 0, 255 ) ), styleCloud | styleNoLabel ); 
+
+
+
+ToolTip=StrFormat("Open: %g\nHigh:  %g\nLow:   %g\nClose:  %g (%.1f%%)\nVolume: "+NumToStr( V, 1 ), O, H, L, C, SelectedValue( ROC( C, 1 )));
+
+//ENTRY RULES ------------------------------------------------------------------
+SetPositionSize( 1, spsShares ); 
+
+//BUY --------------------------------------
+
+
+//ApplyStop(stopTypeLoss, stopModePoint, X1 *C4);
+
+x = EMA(Foreign("~MTBollMACD"+Name(),"C"),7); 
+y = EMA(x, Param("EMA", 7, 2, 14, 1) );
+z = y-Ref(y, -1);
+
+CloseOnCrossLong = ValueWhen(Cross(A1, A2), C);
+CloseOnCrossShort = ValueWhen(Cross(A2, A1), C);
+
+Buy = Cross(z,0);//Ref(x, -1) < 0 AND x > Ref(x,-1) AND Ref(x, -1) < Ref(x,-2);
+Short = Cross(0,z);//Ref(x, -1) > 0 AND x < Ref(x,-1) AND Ref(x, -1) > Ref(x,-2);
+
+Cover  = Buy;
+Sell = Short;
+
+//Buy = ExRem(Buy, Sell);
+//Short = ExRem(Short, Cover);
+//Cover = ExRem(Cover, Short);
+//Sell = ExRem(Sell, Buy);
+
+
+PlotShapes(Buy * (shapeUpTriangle), colorGold);
+PlotShapes(Sell * (shapeHollowCircle), colorOrange);
+
+PlotShapes(Cover * (shapeHollowCircle), colorGold);
+PlotShapes(Short * (shapeDownTriangle), colorOrange);
+
+_N(Title = StrFormat("Trending: {{NAME}} - {{INTERVAL}} {{DATE}} P %g, Open %g High %g Low %g Close %g (%.1f%%) ROC_A1 (%.1f%%) \nCloseOnCrossLong: %g CloseOnCrossShort: %g ATR(10) %g Vol " +WriteVal( V, 1.0 ) +" {{VALUES}}", P, O, H, L, C, SelectedValue( ROC( P, 1 )), SelectedValue( ROC( A1, 1 )), CloseOnCrossLong, CloseOnCrossShort, X1  ));
+_SECTION_END();

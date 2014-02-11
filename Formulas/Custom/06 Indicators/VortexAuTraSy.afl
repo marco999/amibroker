@@ -1,0 +1,17 @@
+// Vortex Indicator
+// S&C Traders Tips Jan 2010
+// Modified According to Au.Tra.Sy Blog
+
+period = 55;
+
+VMP = Wilders( abs( H - Ref( L, -1 ) ), period );
+VMM = Wilders( abs( L - Ref( H, -1 ) ), period );
+STR = Wilders( ATR( 1 ), period );
+
+VIP = VMP / STR * 100;
+VIM = VMM / STR * 100;
+
+
+SetChartBkGradientFill( ParamColor("BgTop", colorDarkGrey),ParamColor("BgBottom", colorBlack));
+Plot( VIP, "VIa"+period+"+", colorBrightGreen);
+Plot( VIM, "VIa"+period+"-", colorRed );

@@ -1,0 +1,52 @@
+SetBarsRequired(20, 0);
+
+J210 = Foreign("$J210-FTSE","O"); 
+J211 = Foreign("$J211-FTSE","O"); 
+J212 = Foreign("$J212-FTSE","O"); 
+J213 = Foreign("$J213-FTSE","O"); 
+
+J210_C = Foreign("$J210-FTSE","C"); 
+J211_C = Foreign("$J211-FTSE","C"); 
+J212_C = Foreign("$J212-FTSE","C"); 
+J213_C = Foreign("$J213-FTSE","C"); 
+
+
+J210_PP=TimeFrameCompress(J210,inDaily, compressOpen);
+J211_PP=TimeFrameCompress(J211,inDaily, compressOpen);
+J212_PP=TimeFrameCompress(J212,inDaily, compressOpen);
+J213_PP=TimeFrameCompress(J213,inDaily, compressOpen);
+
+J210_PP_O = TimeFrameExpand(J210_PP,inDaily, expandFirst);
+J211_PP_O = TimeFrameExpand(J211_PP,inDaily, expandFirst);
+J212_PP_O = TimeFrameExpand(J212_PP,inDaily, expandFirst);
+J213_PP_O = TimeFrameExpand(J213_PP,inDaily, expandFirst);
+
+C1 = 1;	//EMA period
+C2 = 1;	//ROC period
+
+J210_IAD = ROC( EMA( J210_C / J210_PP_O * 100, C1), C2);
+J211_IAD = ROC( EMA( J211_C / J211_PP_O * 100, C1), C2);
+J212_IAD = ROC( EMA( J212_C / J212_PP_O * 100, C1), C2);
+J213_IAD = ROC( EMA( J213_C / J213_PP_O * 100, C1), C2);
+
+IAD = ( J210_IAD + J211_IAD + J212_IAD + J213_IAD) / 4;
+AddToComposite( IAD, "~~IntradayAD", "X"); 
+
+Plot(IAD, "IAD", colorBlue, styleThick);
+
+Plot(J210_IAD, "J210_IAD", colorRed, styleLine, maskHistogram );
+Plot(J211_IAD, "J211_IAD", colorOrange, styleLine, maskHistogram );
+Plot(J212_IAD, "J212_IAD", colorYellow, styleLine, maskHistogram );
+Plot(J213_IAD, "J213_IAD", colorGreen, styleLine, maskHistogram );
+
+trend =  abs(IAD) >= 0.05;
+range = NOT (trend);
+
+Plot( 2, /* defines the height of the ribbon in percent of pane width
+*/"ribbon",
+IIf( trend, colorDarkGrey, IIf( range, colorAqua, 0 )), /* choose color */
+styleOwnScale|styleArea|styleNoLabel, -0.5, 100 );
+
+_N(ToolTip = StrFormat("J210_C: %g, J210_PP_O: %g", J210_C, J210_PP_O));
+
+_N(Title = StrFormat("Intraday Advance/Decline - {{INTERVAL}} {{DATE}} \n{{VALUES}}"));

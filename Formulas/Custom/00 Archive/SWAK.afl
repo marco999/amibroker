@@ -1,0 +1,84 @@
+SetBarsRequired(100000,0);
+PI = 3.1415926;
+function Poly2ndOrder( input, N, c0, c1, b0, b1, b2, a1, a2 )
+{
+  output = input; // initialize for N first bars
+  for( i = Max( N, 2 ); i < BarCount; i++ )
+  {
+     output[ i ] = c0[ i ] * ( b0 * input[ i ] +
+                               b1 * input[ i - 1 ] +
+                               b2 * input[ i - 2 ] ) +
+                     a1 * output[ i - 1 ] +
+                     a2 * output[ i - 2 ] -
+                     c1 * input[ i - N ];
+  }
+  return output;
+}
+function SWAK( input, type, Period, delta )
+{
+  N = 0;
+  an = 2 * PI / Period;
+  c0 = b0 = 1;
+  c1 = b1 = b2 = a1 = a2 = gamma1 = 0;
+  beta1 = 2.415 * ( 1- cos( an ) );
+  alpha = -beta1 + sqrt( beta1 ^ 2 + 2 * beta1 );
+  alpha1 = ( cos( an ) + sin( an ) - 1 )/cos( an );
+  if( type == "EMA" )
+  {
+    b0 = alpha1; a1 = 1 - alpha1;
+  }
+  if( type == "SMA" )
+  {
+    N = Period;
+    c1 = b0 = 1/N; a1 = 1;
+  }
+  if( type == "Gauss" )
+  {
+    c0 = alpha ^ 2;
+    a1 = 2 * ( 1- alpha ); a2 = -( 1 - alpha )*( 1 - alpha );
+  }
+  if( type == "Butter" )
+  {
+    c0 = ( alpha ^ 2 ) / 4;
+    a1 = 2 * ( 1- alpha ); a2 = -( 1 - alpha )*( 1 - alpha );
+    b1 = 2; b2 = 1;
+  }
+  if( type == "HP" )
+  {
+    c0 = 1 - alpha1 / 2;
+    b1 = -1;
+    a1 = 1 - alpha1;
+  }
+  if( type == "2PHP" )
+  {
+    c0 = ( 1 - alpha / 2 ) ^ 2;
+    b1 = -2; b2 = 1; a1 = 2 * ( 1 - alpha ); a2 = - ( 1 - alpha ) ^ 2;
+  }
+  if( type == "BP" OR type == "BS" )
+  {
+    beta1 = cos( 2 * PI / Period );
+    gamma1 = 1 / cos( 4 * PI * delta / Period );
+    alpha = gamma1 - sqrt( gamma1 ^ 2 - 1 );
+    a1 = beta1 * ( 1 + alpha );
+    a2 = - alpha;
+   if( type == "BP" )
+   {
+       c0 = ( 1 - alpha ) / 2;
+       b2 = -1;
+   }
+   else
+   {
+       c0 = ( 1 + alpha ) / 2;
+       b1 = - 2 * beta1;
+       b2 = -1;
+   }
+  }
+  return Poly2ndOrder( input, N, c0, c1, b0, b1, b2, a1, a2 );
+}
+// test code
+P = C - C[ 0 ];
+Plot( P, "Change", colorBlack );
+type = ParamList("Type", "EMA|SMA|Gauss|Butter|HP|2PHP|BP|BS" );
+period = Param("Period", 20, 1, 100, 1 );
+delta = Param("Delta", 0.1, 0, 1, 0.01 );
+Plot( SWAK( P, type, period, delta), type +_PARAM_VALUES(), colorRed );

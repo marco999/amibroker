@@ -1,0 +1,106 @@
+//AFL P&F Chart for Amibroker Indicator window. Based on High/low prices.
+//Based on code in AB help files
+//Reverse is 3 boxes.
+//Graham Kavanagh 30 Sep 2003
+
+Version(4.40);
+SetBarsRequired(100000,100000);
+
+//Size for P&F boxes
+boxsize=IIf(C<0.05, 0.001,
+IIf(C>=0.05 AND C<0.1, 0.002,
+IIf(C>=0.1 AND C<0.5, 0.005,
+IIf(C>=0.5 AND C<2, 0.01,
+IIf(C>=2 AND C<5, 0.02,
+IIf(C>=5 AND C<10, 0.05,
+IIf(C>=10 AND C<50, 0.1,
+IIf(C>=50 AND C<100, 0.2,
+IIf(C>=100 AND C<200, 0.5,
+IIf(C>=200 AND C<500, 1,
+2 ))))))))));
+Box = LastValue(boxsize);
+HX = round((H/box)*10)/10;
+LX = round((L/box)*10)/10;
+RH = floor(HX);
+FL = ceil(LX);
+
+
+// initialize first element
+j = 0;
+
+Reverse = 3;                      // reversal requirement
+
+PFC[j] = FL[0];
+PFO[j] = PFC[j] + 1;
+down = 1;                  // By default the first bar is a down bar.
+up = 0;
+swap = 0;
+
+// perform the loop that produces PF Chart
+for( i = 1; i < BarCount; i++ )
+{
+
+ if( FL[i] <= PFC[j]-1 && down)         //continue down
+ {
+  PFC[j] = FL[i];
+  PFO[j] = PFC[j] + 1;
+ }
+ else
+ {
+  if( RH[i] >= PFC[j] + Reverse && down)  //Change direction to up
+  {
+   j++;
+   swap = 1;
+   PFC[j] = RH[i];
+   PFO[j] = PFC[j]-1;
+  }
+ }
+ if( RH[i] >= PFC[j] + 1 && up)         //Continue up
+ {
+  PFC[j] = RH[i];
+  PFO[j] = PFC[j] - 1;
+ }
+ else
+ {
+  if( FL[i] <= PFC[j] - Reverse && up)   //Change direction to down
+  {
+   j++;
+   PFC[j] = FL[i];
+   PFO[j] = PFC[j] + 1;
+   swap = 1;
+  }
+ }
+ if( swap )
+ {
+  swap = 0;
+  if( up )
+  {
+   up = 0;
+   down = 1;
+  }
+  else
+  {
+   up = 1;
+   down = 0;
+  }
+ }
+}
+delta = BarCount - j-1;
+
+
+PFO = Ref( PFO, -delta );
+PFC = Ref( PFC, -delta );
+
+// High-Low range sets the height of the P&F bar
+H = IIf(Ref(PFC,-1)>Ref(PFO,-1),Ref(HHV(PFC,1),-1)-1,Max(PFO,PFC))*Box;
+L = IIf(Ref(PFC,-1)<Ref(PFO,-1),Ref(LLV(PFC,1),-1)+1,Min(PFO,PFC))*Box;
+O = IIf(Ref(PFC,-1)>Ref(PFO,-1),Ref(HHV(PFC,1),-1)-1,IIf(Ref(PFC,-1)<Ref(PFO,-1),Ref(LLV(PFC,1),-1)+1,PFO))*Box;
+
+// the difference between Open AND Close should be set to box size
+// the sign decides if X or O are plotted
+C = O + Box * IIf( PFC > PFO, 1,-1);
+
+GraphXSpace = 2;
+Title ="No Jscript  " + Name()+ "  PF HiLo, H: " + H+ ", L: " + L+", Box: "+ box + ", Reversal: " + reverse;
+
+Plot( C, "P&F Chart Close", IIf( PFC > PFO, colorBlue, colorRed ), styleCandle+styleNoLabel+stylePointAndFigure);

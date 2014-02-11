@@ -1,0 +1,216 @@
+//THE SCALE OUT FUNCTION IS NOT WORKING CORRECTLY - SEE BOOK FOR HOW TO DO THIS PROPERLY
+//IT IS EXITING THE POSITION TOTALLY ON THE FIRST SCALE OUT.
+
+
+
+_SECTION_BEGIN("Price");
+SetBarsRequired(20, 0);
+#include<Hurst.afl>;
+#include<ITrend.afl>;
+
+SetChartOptions(0,chartShowArrows|chartShowDates);
+P = Close;//(H+L+C)/3;
+_N(Title = StrFormat("Trending: {{NAME}} - {{INTERVAL}} {{DATE}} P %g, Close %g (%.1f%%) Vol " +WriteVal( V, 1.0 ) +" {{VALUES}}", P, C, SelectedValue( ROC( C, 1 )) ));
+Plot( P, "Close", ParamColor("Color", colorBlack ), styleNoTitle | styleThick); 
+if( ParamToggle("Tooltip shows", "All Values|Only Prices" ) )
+{
+ ToolTip=StrFormat("Open: %g\nHigh:  %g\nLow:   %g\nClose:  %g (%.1f%%)\nVolume: "+NumToStr( V, 1 ), O, H, L, C, SelectedValue( ROC( C, 1 )));
+}
+
+//Initial Formulas
+function InverseFisher(array)
+{
+  e2y = exp(2 * array);
+  return (e2y - 1)/(e2y + 1);
+}
+a1 = 0.1*(RSI()-50);
+a2 = WMA(a1, 7);
+FisherXform = inverseFisher(a2) * 100;
+
+
+V1 = ATR(10);
+
+//C1 = Optimize("C1", 3, 3, 21, 3);
+C1 = Optimize("C1", 0.9, 0.1, 1, 0.1);
+A1 = itrend(P,C1);
+C2 = Optimize("C2", 0.6, 0.1, 1, 0.1);
+A2 = itrend(P, C2);
+C3 = 100;//Optimize("C3", 100, 60, 100, 2);
+A3	= MA(P, C3);
+Bull = A2 > A3;
+Bear = A3 > A2;
+
+
+Buy = Cross( A1, A2 ) ;//OR A1 > A2; 
+Short = Cross( A2, A1 ) ;//OR A2 > A1; 
+Sell  = 0;//Cross(Ref(P, -HHH1) , P);
+Cover  = 0;//Cross(P, Ref(P, -LLLLB));
+
+//	Targets are in percentages.
+FirstProfitTarget = 1;//Optimize("P1", 1, 1, 10, 2);  
+SecondProfitTarget = 2;//Optimize("P2", 5, 5, 20, 2);
+TrailingStop = 3;//Optimize("T1", 3, 1, 5, 1);  
+
+//Plots
+Plot(A1, "A1", colorRed, styleLine);
+Plot(A2, "A2", colorBlue, styleLine);
+Plot(A3, "A3", colorBrightGreen, styleLine);
+
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} Close %g (%.1f%%) Vol " +WriteVal( V, 1.0 ) + 
+"\nP %g,  {{VALUES}}", C, SelectedValue( ROC( C, 1 )), P ));
+
+//	Scalars to keep track of prices while in trade.
+PriceAtBuy=0; 
+HighSinceBuy = 0; 
+Exit = 0; 
+
+//	Loop through all the bars - sell signals.
+for( i = 0; i < BarCount; i++ ) 
+
+{
+	if (PriceAtBuy==0 AND Buy[i]==1) 
+	{ 
+		PriceAtBuy = BuyPrice[i]; 
+	} 
+	else
+		if(PriceAtBuy > 0 ) 
+		{ 
+			HighSinceBuy = Max(High[i],HighSinceBuy); 
+			if (Exit==0 AND 
+				High[i] >= (1 + FirstProfitTarget*V1[i]/PriceAtBuy) 
+					* PriceAtBuy ) 
+			{
+				// first profit target hit - scale-out 
+				Exit = 1; 
+				Buy[i] = sigScaleOut; 
+				BuyPrice[i] = Close[i];//(1 + FirstProfitTarget*V1[i]/PriceAtBuy) * PriceAtBuy;
+				dist = 1.5*ATR(10);
+				PlotText( "LScaleOut1\n@" + BuyPrice[i], i, H[ i ]+dist[i], colorBlack, colorYellow ); 
+
+			} 
+			if(
+				Exit==1 AND 
+				(High[i] >= (1 + SecondProfitTarget*V1[i]/PriceAtBuy) 
+					* PriceAtBuy))
+			{
+			// second profit target hit - exit 
+				Exit = 2; 
+				Sell[i] = sigScaleOut;
+				SellPrice[i] = Close[i];//Max(Open[i],	(1 + SecondProfitTarget*V1[i]/PriceAtBuy) * PriceAtBuy); 
+				dist = 1.5*ATR(10);
+				PlotText( "LScaleOut2\n@" + BuyPrice[i], i, H[ i ]+dist[i], colorBlack, colorOrange ); 
+
+			} 
+			if (Low[i] <= (1 - TrailingStop*V1[i]/PriceAtBuy) * HighSinceBuy) 
+			{ 
+				// trailing stop hit - exit 
+				Exit = 3;    
+				SellPrice[i] = Close[i];//Min(Open[i], (1 - TrailingStop*V1[i]/PriceAtBuy) * HighSinceBuy); 
+				dist = 1.5*ATR(10);
+				PlotText( "LStopOut\n@" + SellPrice[i], i, H[ i ]+dist[i], colorWhite, colorRed ); 
+
+			}
+			if (Exit >= 2) 
+			{ 
+				Buy[i] = 0; 
+				Sell[i] = Exit + 1; // mark appropriate exit code 
+				
+				Exit = 0; 
+				PriceAtBuy = 0;  
+				HighSinceBuy = 0; 
+			} 
+	} 
+} 
+
+
+
+//	Scalars to keep track of prices while in trade.
+PriceAtShort=0; 
+LowSinceShort = 0; 
+Exit = 0; 
+
+//	Loop through all the bars - cover signals.
+for( i = 0; i < BarCount; i++ ) 
+
+{
+	if (PriceAtShort==0 AND Short[i]==1) 
+	{ 
+		PriceAtShort = ShortPrice[i]; 
+	} 
+	else
+		if(PriceAtShort > 0 ) 
+		{ 
+			LowSinceShort = Min(Low[i],LowSinceShort); 
+			if (Exit==0 AND 
+				Low[i] <= (1 - FirstProfitTarget*V1[i]/PriceAtShort) 
+					* PriceAtShort ) 
+			{
+				// first profit target hit - scale-out 
+				Exit = 1; 
+				Short[i] = sigScaleOut; 
+				ShortPrice[i] = Close[i];//(1 - FirstProfitTarget*V1[i]/PriceAtShort) * PriceAtShort;
+				dist = 1.5*ATR(10);
+				PlotText( "SScaleOut1\n@" + ShortPrice[i], i, H[ i ]+dist[i], colorWhite, colorDarkYellow ); 
+
+			} 
+			if(
+				Exit==1 AND 
+				(Low[i] <= (1 - SecondProfitTarget*V1[i]/PriceAtShort) 
+					* PriceAtShort))
+			{
+			// second profit target hit - exit 
+				Exit = 2; 
+				Short[i] = sigScaleOut;
+				CoverPrice[i] = Close[i];//Min(Open[i],	(1 - SecondProfitTarget*V1[i]/PriceAtShort) * PriceAtShort); 
+				dist = 1.5*ATR(10);
+				PlotText( "SScaleOut2\n@" + ShortPrice[i], i, H[ i ]+dist[i], colorWhite, colorBrown ); 
+
+			} 
+			if (High[i] >= (1 + TrailingStop*V1[i]/PriceAtShort) * LowSinceShort) 
+			{ 
+				// trailing stop hit - exit 
+				Exit = 3;    
+				CoverPrice[i] = Close[i];//Max(Open[i],(1 + TrailingStop*V1[i]/PriceAtShort) * LowSinceShort); 
+				dist = 1.5*ATR(10);
+				PlotText( "SStopOut\n@" + CoverPrice[i], i, H[ i ]+dist[i], colorWhite, colorDarkRed ); 
+
+			}
+			if (Exit >= 2) 
+			{ 
+				Short[i] = 0; 
+				Cover[i] = Exit + 1; // mark appropriate exit code 
+				
+				Exit = 0; 
+				PriceAtShort = 0;  
+				LowSinceShort = 0; 
+			} 
+	} 
+} 
+
+
+
+SetPositionSize( 2, spsPercentOfEquity ); 
+// scale out 50% of position
+SetPositionSize( 65, spsPercentOfPosition * ( Buy==sigScaleOut) ); 
+SetPositionSize( 35, spsPercentOfPosition * ( Sell==sigScaleOut) ); 
+SetPositionSize( 50, spsPercentOfPosition * ( Short==sigScaleOut) ); 
+
+//SetPositionSize( 50, spsPercentOfPosition * ( Buy==3) ); 
+
+//Buy = ExRem(Buy, Short);
+//Short = ExRem(Short, Sell);
+
+
+PlotShapes( IIf(Buy == 1, shapeSmallUpTriangle, shapeNone), colorBrightGreen);
+PlotShapes( IIf(Buy == 3, shapeSmallCircle, shapeNone), colorOrange);
+PlotShapes( IIf(Sell == 2, shapeSmallUpTriangle, shapeNone), colorYellow);
+PlotShapes( IIf(Sell == 3, shapeSmallUpTriangle, shapeNone), colorOrange);
+PlotShapes( IIf(Sell == 4, shapeSmallUpTriangle, shapeNone), colorRed);
+
+
+PlotShapes( IIf(Short == 1, shapeSmallDownTriangle, shapeNone), colorPink);
+PlotShapes( IIf(Cover == 3, shapeSmallDownTriangle, shapeNone), colorYellow);
+PlotShapes( IIf(Cover == 4, shapeSmallDownTriangle, shapeNone), colorOrange);
+PlotShapes( IIf(Cover == 5, shapeSmallDownTriangle, shapeNone), colorRed);
+
+SetChartBkGradientFill( ParamColor("BgTop", colorWhite),ParamColor("BgBottom", colorDarkBlue)); 

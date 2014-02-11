@@ -1,0 +1,39 @@
+/*
+
+trend channel development
+Edward Pottasch, nov 2004
+
+*/
+
+
+per = 15; per = Param( "period", 15, 1, 500, 1);
+
+mm = C;
+
+x = Cum(1);
+lastx = LastValue(x);
+selv = SelectedValue(x);
+
+aaa = LinRegIntercept(mm, per);
+bbb = LinRegSlope(mm, per);
+
+daa = SelectedValue(ValueWhen(x, aaa, 1));
+dbb = SelectedValue(ValueWhen(x, bbb, 1));
+
+xx = IIf(x > selv - per AND x <= selv, x - (selv - per),Null);
+
+yy = daa + dbb * xx;
+
+dhh = abs(H - yy);
+dll = abs(L - yy);
+dtt = Max(dhh,dll);
+
+wd = SelectedValue(HHV(dtt,per));
+
+SetChartOptions(0, chartShowDates);
+GraphXSpace = 5;
+
+Plot(C,"",colorWhite,64);
+Plot(yy, "LinReg", colorBlue );
+Plot(yy + wd, "Upper Boundary", colorRed, 4 );
+Plot(yy - wd, "Lower Boundary", colorBrightGreen, 4 );

@@ -1,0 +1,99 @@
+_SECTION_BEGIN("Nazgul EO");
+
+P = C;//(H+L+C+O)/4;
+
+
+SetBarsRequired(2000, 0);
+C6 = 1;//
+AMF = TimeFrameCompress(P, in15Minute * C6);
+AMF_T = TimeFrameExpand(BBandTop(AMF, 127, 1), in15Minute * C6);
+AMF_B = TimeFrameExpand(BBandBot(AMF, 127, 1), in15Minute * C6);
+
+X1 = ATR(7);
+//SYSTEM -----------------------------------------------------------------------
+C1 = Optimize("c1", 3, 3, 21, 1);
+C2 = Optimize("c2", 7, 7, 48, 1);
+C3 = 6;//Optimize("c2", 5, 1, 7, 1);
+
+A1 = EMA(P, C1);
+A2 = EMA(P, C2);
+
+SetChartOptions(0,chartShowArrows|chartShowDates);
+SetChartBkGradientFill( ParamColor("BgTop", colorBlue),ParamColor("BgBottom", colorDarkBlue));
+//ShortPrice = BuyPrice = CoverPrice = SellPrice = Ref(Open,1);
+
+PP = TimeFrameCompress(P, in5Minute * 6);
+EOsc = TimeFrameExpand(WMA(PP,5)-WMA(PP,34), in5Minute * 6);
+//Plot( EOsc, "EOsc",colorOrange, styleLine );
+
+//ENTRY RULES --------------------------------------
+C2 = 1; //range of dangling candle
+
+B1 = A1 > A2;
+CloseOnCrossLong = Ref(ValueWhen(Cross(A1,A2), Max(C,O)),0);
+B2 = C > CloseOnCrossLong;
+B3 = EOsc<50;// AND C < AMF_T AND C > AMF_B;
+
+S1 = A1 < A2;
+CloseOnCrossShort = Ref(ValueWhen(Cross(A2,A1), Min(C,O)),0);
+S2 = C < CloseOnCrossShort;
+S3 = EOsc>-50;// AND C < AMF_T AND C > AMF_B;
+
+ToolTip = StrFormat("S3: %g", S3);
+
+//EXIT RULES ----------------------
+BStop = ValueWhen(B1 AND B2 AND B3, C - ATR(7)*C3); 
+SStop = ValueWhen(S1 AND S2 AND S3, C + ATR(7)*C3);
+
+Buy = (B1 AND B2 AND B3) OR C>Sstop;
+Short = (S1 AND S2 AND S3) OR C<Bstop;
+
+Sell  = (S1 AND S2 AND S3) OR C<Bstop;
+Cover  = (B1 AND B2 AND B3) OR C>Sstop;
+
+Buy = ExRem(Buy, Sell);
+Sell = ExRem(Sell, Buy);
+
+Short = ExRem(Short, Cover);
+Cover = ExRem(Cover, Short);
+
+Plot( C, "Close", colorBlack, styleCandle); 
+Plot( A1, "EMA3",colorYellow, styleLine );
+Plot( A2, "EMA7",colorAqua, styleLine );
+//PlotOHLC(AMF_T,AMF_T,AMF_B,AMF_B,"AMF",ColorHSB(136, 196, 128),styleCloud);
+//Plot(AMF_T, "AMF_T", colorRed);
+//Plot(AMF_B, "AMF_B", colorRed);
+
+PlotShapes(Buy * (shapeCircle + shapePositionAbove), colorGold);
+PlotShapes(Sell * (shapeHollowCircle), colorGold);
+
+PlotShapes(Short * (shapeCircle), colorOrange);
+PlotShapes(Cover * (shapeHollowCircle), colorOrange);
+
+TradeType = Flip(Buy, Short);
+//SetChartBkColor(LastValue(IIf( TradeType>0, colorDarkGreen, colorDarkRed)));
+
+//Push position
+//SetPositionSize(1, spsShares);
+SetPositionSize(1, spsShares);
+//SetPositionSize(2, IIf(B1 AND B2 AND B3,spsShares,spsNoChange));
+//SetPositionSize(1, IIf(S1 AND S2 AND S3,spsShares,spsNoChange));
+
+lastPL = 0;//ValueWhen(Sell, C) - ValueWhen(Buy, C);
+
+alsi = 1;//Ref(Foreign("ALSI", "C"),0);
+alsiBuy = 1;//ValueWhen(Buy==1, Ref(alsi,0));
+alsiSell = 1;//ValueWhen(Sell==1, Ref(alsi,0));
+
+_N(Title = StrFormat("NAZ EO  {{NAME}} - {{INTERVAL}} {{DATE}} P %g, Open %g High %g Low %g Close %g (%.1f%%) \n"
+  + ""
+  + "ALSIBuy: %g ALSISell %g LastPL: %g LastValueALSI: %g OpenPL %g"
+  + "\n      EOsc: %g Vol: "
+  + WriteVal( V, 1.0 ) +" {{VALUES}}", P, O, H, L, C, SelectedValue( ROC( C, 1 )), alsibuy, alsisell, alsisell - alsibuy, LastValue(alsi), IIf(TradeType>0,LastValue(alsi) - alsibuy, alsisell-LastValue(alsi)), EOsc   ));
+
+V1 = Foreign("AGL-JSE", "V");
+V2 = Foreign("BIL-JSE", "V");
+myVol = (V1 + V2) / 2;
+Plot( myVol, _DEFAULT_NAME(), ColorHSB(Param("Hue", 128, 0, 256, 1), 255,116), styleNoTitle | ParamStyle( "Style", styleHistogram | styleOwnScale | styleThick | styleNoLabel, maskHistogram  ), 2 );
+
+_SECTION_END();

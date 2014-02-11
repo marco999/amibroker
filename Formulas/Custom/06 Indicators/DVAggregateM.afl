@@ -1,0 +1,49 @@
+/*
+The Aggregate M indicator is based on the concept that in the long term the market trends, 
+while in the Short-term the market is  noisy, AND has a tendency to mean-revert. 
+Why NOT combine the two concepts to keep life simple?  
+
+The Aggregate M  is supposed to reflect an adjusted Median that is filtered for Short term noise. 
+The Median is a far more accurate measure of central tendency than a simple average especially with noisy data.  
+Taking a superior measure of trend AND filtering out some of the noise by adjusting for Short-term mean reversion 
+creates an even better Median. 
+
+The Aggregate M is Now both trend AND mean-reversion rolled into one. 
+
+In the example below the aggregate M is simply the average of 
+1) 252 Day PERCENTRANK of High, Low AND Close values AND 
+2) 10 Day (1-PERCENTRANK) of High, Low AND Close values. 
+
+This average is smoothed using a .6 weight on today AND .4 weight on yesterday. 
+
+Is this robust? The S&P500 results over the last 4000 bars speak for themselves–High accuracy, 
+good gains per trade AND a nice Equity curve. In a separate multimarket test with 20 markets going back to 1984, 
+the Aggregate M did 27% CAGR through 2009. 
+
+Is it the best method…….probably NOT—I certainly didn’t spend any time optimizing OR digging as I came up with it just yesterday. 
+Furthermore the structure can be substantially improved. But pretty damn good for two common sense parameters!
+*/
+
+// DV Indicators by David Varadi http://cssanalytics.wordpress.com/
+// Code by Ramon Cummins ramon@minkcapital.com
+// Last updated 7 November 2009
+
+_SECTION_BEGIN( "DV Aggregate M" );
+#include<LiveGlobals.afl>
+#include<PercentRankHLC.afl>;
+
+Value1 = PercentRankHLC(High,Low,Close,AMD_V1); 
+Value2 = 100- PercentRankHLC(High,Low,Close,AMD_V2); 
+Value3 = (Value1+Value2)/2;
+
+AggM = Value3*AMD_am1 + Ref(Value3,-1)*AMD_am2;
+Bull = Cross(AggM, AMD_bull1);
+Bear = Cross(AMD_bear1, AggM);
+TradeType = Flip(Bull, Bear);
+
+Plot( AggM, "AggM", colorBlack);
+PlotOHLC( AggM,AggM,AMD_bull1,AggM, "", IIf( TradeType<=0, colorRed, colorGreen ), styleCloud | styleClipMinMax, 50, 50 );
+SetChartBkGradientFill( ParamColor("BgTop", colorBlueGrey),ParamColor("BgBottom", colorBlack));
+_SECTION_END();
+
+ 

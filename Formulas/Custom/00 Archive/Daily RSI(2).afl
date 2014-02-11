@@ -1,0 +1,4 @@
+X1 = RSIa(Close,2);
+
+
+Plot(X1, "RSI(2)", colorRed);

@@ -1,0 +1,44 @@
+SetBarsRequired(200, 0);
+
+// Ehlers formulas
+// from Ehlers, John F. Cybernetic Analysis for Stocks and Futures. Wiley. 2004. 
+// Chapter 1, p. 1. Code on p. 7.
+
+function InverseFisher(array)
+{
+  e2y = exp(2 * array);
+  return (e2y - 1)/(e2y + 1);
+}
+
+function Normalize(array, arraylen)
+// Figure 1.7 on p. 7
+{
+  MaxH = HHV(array, arraylen);
+  MinL = LLV(array, arraylen);
+  Value1[0] = array[0];  // Initialize as array
+
+  for(i = 1; i < BarCount; i++)
+  {
+     Value1[i] = .5 * 2 * ((array[i] - MinL[i]) / (MaxH[i] - MinL[i]) - .5) + .5 * Value1[i-1];
+     if (Value1[i] > .9999) Value1[i] = .9999;
+     if (Value1[i] < -.9999) Value1[i] = -.9999;
+  }
+  return Value1;
+}
+
+function Fisher(array)
+// Figure 1.7 on p. 7
+{
+  F = array;
+  F = .25 * log((1+ array)/(1 - array)) + .5 * Ref(F, -1);
+  return F;
+}
+
+Med = (H+L)/2;
+
+// Fisher Transform
+FisherXform = Fisher(Normalize(Med, 10));
+Plot(FisherXform, "Fisher Transform", colorRed, styleLine);
+Plot(Ref(FisherXform, -1), "", colorBlue, styleLine);
+PlotGrid(2);
+PlotGrid(-2);

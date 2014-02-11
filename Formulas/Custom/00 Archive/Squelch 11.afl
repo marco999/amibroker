@@ -1,0 +1,8 @@
+_SECTION_BEGIN("Squelch");
+Med = (H+L)/2;
+dc = sbDC(C);
+squelch = Param("Cutoff", 20, 5, 60, 1);
+SetChartOptions(0,chartShowArrows|chartShowDates);
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} Open %g, Hi %g, Lo %g, Close %g (%.1f%%) {{VALUES}}", O, H, L, C, SelectedValue( ROC( C, 1 ) ) ));
+Plot( C, "Close", IIf(dc > squelch,9,3), styleNoTitle | ParamStyle("Style") | GetPriceStyle() ); 
+_SECTION_END();

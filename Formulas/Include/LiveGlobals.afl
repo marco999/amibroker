@@ -1,0 +1,13 @@
+//AggM +DVO System :: (AMD)
+AMD_V1 = 252; AMD_V2 = 10;
+
+AMD_am1 = 0.5; AMD_am2 = 1-AMD_am1;
+
+AMD_dvo_const = 0.5; 
+AMD_s1 = 5;
+AMD_w1 = 0.2; AMD_w2 = 0.3;
+AMD_dvo_ma1 = 2; AMD_dvo_ma2 = 13; 
+
+AMD_bull1 = 50; AMD_bear1 = 100 - AMD_bull1;
+
+AMD_stop_level = 2; AMD_p_trail = 13; AMD_max_stop = 1;

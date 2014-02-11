@@ -1,0 +1,33 @@
+_SECTION_BEGIN("AdaptiveRVI");
+SetBarsRequired(10000,10000);
+
+// Ehlers Dominant Cycle Period
+// from Ehlers, John F. Cybernetic Analysis for Stocks and Futures. Wiley. 2004. 
+// Chapter 9, p. 107. Code on p. 111.
+
+// CyclePeriod
+SetPositionSize(1, spsShares);
+P = (H+L+C+O)/4;
+#include<CyclePeriod.afl>;
+  
+
+p1 = int(HHV(CyclePeriod(Avg, 0.7),1));
+
+//RVI
+RVI = sbRVI(13);
+Trigger = (RVI + 2 * Ref(RVI,-1) + 2 * Ref(RVI,-2) + Ref(RVI,-3))/6;
+
+Plot(RVI, "AdaptiveRVI", colorRed, styleThick);
+Plot(Trigger, "Trigger", colorBlue, styleThick);
+
+Buy = Cross(RVI, Trigger) AND RVI < -0.2;
+Short  = Cross(Trigger, RVI) AND RVI > 0.2;
+
+Cover = Buy;
+Sell = Short;
+
+Buy = ExRem(Buy, Sell);
+
+PlotShapes( Buy * shapeUpArrow, colorGreen );
+PlotShapes( Short * shapeDownArrow, colorRed );
+_SECTION_END();

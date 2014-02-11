@@ -1,0 +1,32 @@
+_SECTION_BEGIN("Price");
+SetChartOptions(0,chartShowArrows|chartShowDates);
+_N(Title = StrFormat("StopLoss: {{NAME}} - {{INTERVAL}} {{DATE}} Open %g, Hi %g, Lo %g, Close %g (%.1f%%) {{VALUES}}", O, H, L, C, SelectedValue( ROC( C, 1 ) ) ));
+
+P = (H+L+C+O)/4;
+Plot( C, "Close", ParamColor("Color", colorBlack ), styleNoTitle | ParamStyle("Style") | GetPriceStyle() ); 
+
+Bars = Cum(1);
+
+MyHold = BarIndex() - SelectedValue(Bars)+1;
+Multiple = Param("Multiple", 1, 0.1, 2, 0.05);
+
+ChandHigh = HHV(H, MyHold) - Multiple * ATR(21) ; //Chandelier exit line from highest high, 2% (20% actual loss)
+targetLong = Max(C+10,LLV(H, MyHold) + 3 * Multiple * ATR(21));
+Sell = Cross(ChandHigh, C);
+
+ChandLow = Max(C-10, LLV(L, MyHold) + ATR(21) * Multiple); //Chandelier exit line from highest high
+targetShort = HHV(L, MyHold) - 3 * Multiple * ATR(21);
+Cover = Cross(C, ChandLow);// AND Bars > (SelectedValue(Bar
+
+Plot(ChandHigh, "ChandHigh", colorOrange, styleLine);
+Plot(ChandLow, "ChandLow", colorYellow, styleLine  );
+Plot( targetLong, "TargetLong", colorGreen);
+Plot( targetShort, "TargetShort", colorRed);
+
+PlotShapes( Sell  * shapeCircle, colorOrange );
+PlotShapes( Cover  * shapeCircle, colorYellow );
+
+SetChartBkGradientFill( ParamColor("BgTop", colorWhite),ParamColor("BgBottom", colorDarkBlue)); 
+
+
+_SECTION_END();

@@ -1,0 +1,93 @@
+//1) <http://www.gerryco.com/tech/darvas.html>
+//2) <http://www.wealth-lab.com/cgi-bin/WealthLab.DLL/editsystem?id=2814>
+
+//////////begin/////////
+
+box1=0;
+box2=0;
+SetBarsRequired(10000,0);
+procedure fillDarvas(start,end,swap,top, bottom )
+{
+   for ( j = start; j < end; j++)
+   {
+       if( box1[j] == swap)
+  box1[j]= top ;
+else
+box1[j]= bottom;
+
+       if(box2[j] == swap)
+  box2[j]= bottom ;
+else
+box2[j]= top;
+   }
+}
+
+BoxArr1 = 0;
+BoxArr2 = 0;
+StateArray = 0;
+DBuy = 0;
+DSell = 0;
+TopArray = 0;
+BotArray = 0;
+tick=0;
+
+BoxTop = High[0];
+BoxBot = Low[0];
+swap=0;
+state = 0;
+BoxStart = 0;
+
+for (i=0; i<BarCount; i++)
+{
+ if (state==5)
+ {
+  TopArray[i]=BoxTop;
+  BotArray[i]=BoxBot;
+  if (Low[i]<(BoxBot*(1-tick/100)) || High[i]>(BoxTop*(1+tick/100)))
+  {
+	fillDarvas(BoxStart,i,swap,BoxTop,BoxBot);
+
+  state = 1;
+  swap =  !swap;
+  BoxTop = High[i];
+  BoxStart = i;
+  }
+ }
+ else
+ {
+  if (High[i]<BoxTop)
+  {
+   if ((state<3) || (Low[i]>BoxBot))
+   {
+	   state++;
+   }
+      else
+   {
+      state=3;
+   }
+   if (state==3)
+      BoxBot=Low[i];
+  }
+  else
+  {
+      state=1;
+      BoxTop=High[i];
+  }
+ }
+ StateArray[i] = state;
+}
+
+fillDarvas(BoxStart,BarCount,swap,BoxTop,BoxBot);
+
+Buy=Cover=C>Ref(box1,-1) AND C>Ref(box2,-1) AND Ref(statearray,-1)==5;
+Short=Sell=C<Ref(box1,-1) AND C<Ref(box2,-1) AND Ref(statearray,-1)==5;
+
+Plot(C,"Close",1,64);
+Plot( box1, "Status = "+WriteVal(statearray,1.0) , 1 + statearray, styleLine );
+Plot( box2, "Box2" , 1 + statearray , styleLine );
+PlotShapes(shapeUpArrow*(Buy),colorGreen);
+PlotShapes(shapeDownArrow*(Sell),colorRed);
+//Plot( Flip( Buy, Sell ), "Trade", colorPaleGreen, styleArea | styleOwnScale, 0, 1 );
+//Plot( Flip( Sell, Buy), "Short", colorPaleBlue, styleArea | styleOwnScale , 0, 1 );
+
+Plot( Volume,"Volume", ColorHSB(Param("Hue", 128, 0, 256, 1), 255,116), ParamStyle( "Style", styleHistogram | styleOwnScale | styleThick | styleNoLabel, maskHistogram  ) );

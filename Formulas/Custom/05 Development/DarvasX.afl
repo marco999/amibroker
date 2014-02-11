@@ -1,0 +1,76 @@
+// Darvas
+/*
+In "Something Darvas, Something New: Modifying The Darvas Technique For 
+Today's Markets" in this issue,
+Daryl Guppy presents a modified Version of the Darvas trading technique,
+which was introduced in the 1960s.
+Implementing the required calculations in AmiBroker Formula Language 
+(AFL) is straightforward.
+Ready-to-use Darvas formulas for AmiBroker are presented in Listing 1.
+*/
+
+Periods = 100;
+function DarvasHigh( Periods )
+{
+HHVtemp = HHV( High, Periods );
+result = HHVTemp;
+for( i = Periods + 4; i < BarCount; i++ )
+{
+    result[ i ] = IIf( H[ i - 3 ] >= HHVTemp[ i - 4 ] AND
+                      H[ i - 3 ] > H[ i - 2 ] AND
+                      H[ i - 3 ] > H[ i - 1 ] AND
+                      H[ i - 3 ] > H[ i ],
+                      H[ i - 3 ],
+                      result[ i - 1 ] );
+}
+return result;
+}
+function NewDarvasHigh( Periods )
+{
+   dh = DarvasHigh( Periods );
+   return dh AND Nz( dh ) != Ref( Nz( dh ), -1 );
+}
+function NewDarvasLow( Periods )
+{
+   dh = DarvasHigh( Periods );
+   ndl = Ref( L, -3 ) < Ref( L, -2 ) AND
+         Ref( L, -3 ) < Ref( L, -1 ) AND
+         Ref( L, -3 ) < L AND
+         Ref( H, -2 ) < dh AND
+         Ref( H, -1 ) < dh AND
+         H < dh;
+   return Nz( ndl ) AND Ref( Nz( ndl ), -1 ) < 1;
+}
+function DarvasLow( Periods )
+{
+   return ValueWhen( NewDarvasLow( Periods ), Ref( L, -3 ) );
+}
+function DarvasBoxEnd( Periods )
+{
+end = BarsSince( NewDarvasHigh( Periods ) ) <
+        BarsSince( Ref( NewDarvasLow( Periods ), -1 ) );
+return Nz( end ) AND NewDarvasLow( Periods );
+}
+function DarvasBoxHigh( Periods )
+{
+dbe = DarvasBoxEnd( Periods );
+dbhi = ValueWhen( Nz( dbe ) AND NOT IsNull( Ref( dbe, -1 ) ),
+        DarvasHigh(       Periods ) );
+return IIf( Nz( dbhi ) == 0, H + 1e-6, dbhi );
+}
+function DarvasBoxLow( Periods )
+{
+dbe = DarvasBoxEnd( Periods );
+dblo = ValueWhen( Nz( dbe ) AND NOT IsNull( Ref( dbe, -1 ) ),
+         DarvasLow( Periods ) );
+return IIf( Nz( dblo ) == 0, L - 1e-6, dblo );
+}
+function DarvasPossSell( Periods )
+{
+dsl = Low < DarvasBoxLow( Periods );
+return Nz( dsl ) AND Ref( Nz( dsl ), -1 ) < Nz( dsl );
+}
+Plot( C, "Price", colorBlack, styleCandle );
+Plot( DarvasLow( 100 ), "DL", colorRed );
+Plot( DarvasHigh( 100 ), "DH", colorGreen );
+

@@ -1,0 +1,98 @@
+/*
+After analyzing AND testing  everything under the sun, I
+ believe that i have found the holy grail of indicators. 
+if I were to have to choose one trading indicator OR one strategy period 
+for the next 10 years the adaptive  DVO would  be it.  
+The DVO is actually the “mother” oscillator of the DV2. 
+It was designed to be only a Short-term oscillator (maximum smoothing period of 5) 
+as the importance of intraday highs AND lows decline over time. 
+The DV2 is simply one specific setting that was originally designed for the SPY. 
+It was determined that the Open had very little value in this case, 
+AND that the optimal weighting period (omitting the smoothing factor) 
+was nearly 50/50 over the last two days. 
+As it turned out this weighting scheme worked very well also on almost all ETFs AND on most stocks.
+
+The actual formula is:
+
+P(L) ( s*(C/(w*H+w*O+w*L+w*C) today+ s*(C/(w*H+w*O+w*L+w*C) yesterday……..s*(C/(w*H+w*O+w*L+w*C)4 days ago from today)
+
+-where P(L) =Percentrank with a lookback period chosen by the user (note this can also be optimized).
+-where “w” AND can represent distinct weights (ie w1, w2, w3) chosen by the user for up to a maximum of 5 days back including today. The Sum of these weights adds up to 1.
+-where “s” represents a smoothing constant, however it can also represent unique weights placed on each Day (again Sum of the weights would also add up to 1).
+
+In practice, what we do is to create unique weighting schemes that function best for each stock OR ETF AND average it with the local weight density (my own term!)  that is robust across the maximum number of ETFs AND stocks. In this manner, the DVO is even more adaptive than other indicators, because different securities also have different cycle lengths AND amplitudes in addition to having their own unique return distributions AND intraday behaviour.
+
+Of course we also dig further AND determine using adaptive applications which direction to take signals long OR Short, AND which readings work best for a trading strategy. Transaction costs are critical AND can change the optimal weighting scheme dramatically.
+
+while the setting for the DV2 is robust across stocks AND ETFs, one must realize that this is a function of the unique amplitude AND cycle properties of the current marketplace which are subject to change over time. RSI2 for example was NOT effective prior to the late 90’s, while slightly longer term oscillators worked reasonably well such as using a reverse MACD. Even more important to recognize, which has been hammered home at www.marketsci.wordpress.com most definitively, is that markets change, only adaptive approaches retain longevity over time. It is plausible that the DV2 may become a great trend indicator in the future, much like it was in the 60’s, 70’s, AND 80’s.
+
+The bottom line is, Outside of ETF arbitrage AND pairs trading–which reliably mean revert over time, the key to success in swing trading is to be able to apply indicators accurately for the current trading environment AND for the specific vehicle you are trading.
+
+I will leave you all with an extremely useful but potentially dangerous weapon if used improperly: use the DVO AND Optimize the settings for a given stock OR ETF AND then combine the new oscillator with the DV2 to create a composite indicator. This doesn’t address certain issues, such as the shift in the direction of the indicator, AND the best smoothing method OR weighting scheme using adaptation, but it is a big step up from the competition. I suggest that if any of you choose to try some testing—i would be pleased to see the results. We can post them on the site for purposes of using it as an example. Send them to me at dmvaradi@gmail.com 
+
+PS don’t forget the post on pairs trading later tonight.
+
+*/
+//OptimizerSetEngine("cmae");
+//SYSTEM -----------------------------------------------------------------------
+//default settings are for 2010
+
+AMD_V1 = 252; 
+AMD_V2 = 10;
+
+AMD_am1 = 0.8; 
+AMD_am2 = 1-AMD_am1;
+
+AMD_dvo_const = 1; 
+AMD_s1 = 5;
+AMD_w1 = 0.2;
+AMD_w2 = 0.3;
+
+AMD_dvo_ma1 = 2; 
+AMD_dvo_ma2 = 8; 
+
+AMD_bull1 = 50; 
+AMD_bear1 = 100 - AMD_bull1;
+
+AMD_stop_level = 2; 
+AMD_p_trail = 17;
+
+AMD_max_stop = 1;
+
+//OPTIMIZE VARIABLES (override globals) ----------------------------------------
+AMD_dvo_const	= Optimize("AMD_dvo_const", 0.95, 0.1, 1, 0.05);
+
+s1 = AMD_s1; s2 = AMD_dvo_const * s1; s3 = AMD_dvo_const * s2; s4 = AMD_dvo_const * s3; s5 = AMD_dvo_const * s4;
+w1 = AMD_w1; w2 = AMD_w2; w3 = w1; w4 = w2;
+
+step1 = s1*(Ref(C,0))/(w1*Ref(H,0)+w2*Ref(O,0)+w3*Ref(L,0)+w4*Ref(C,0))
+		+s2*(Ref(C,-1))/(w1*Ref(H,-1)+w2*Ref(O,-1)+w3*Ref(L,-1)+w4*Ref(C,-1))
+		+s3*(Ref(C,-2))/(w1*Ref(H,-2)+w2*Ref(O,-2)+w3*Ref(L,-2)+w4*Ref(C,-2))
+		+s4*(Ref(C,-3))/(w1*Ref(H,-3)+w2*Ref(O,-3)+w3*Ref(L,-3)+w4*Ref(C,-3))
+		+s5*(Ref(C,-4))/(w1*Ref(H,-4)+w2*Ref(O,-4)+w3*Ref(L,-4)+w4*Ref(C,-4)); 
+
+dvo = PercentRank(MA(step1, AMD_dvo_ma1), AMD_dvo_ma2 );
+
+Buy = Cross(50, dvo);
+Short = Cross(dvo, 50);
+Sell = Short;
+Cover = Buy;
+
+Buy = ExRem(Buy, Sell);
+Sell = ExRem(Sell, Buy);
+
+Short = ExRem(Short, Cover);
+Cover = ExRem(Cover, Short);
+
+
+Plot(dvo, "DVO", colorBlack);
+PlotOHLC( dvo,dvo,50,dvo, "", IIf( dvo >50, colorGreen, colorRed), styleCloud | styleClipMinMax, 50, 50 );
+
+//PlotShapes(Buy * (shapeCircle + shapePositionAbove), colorGold);
+//PlotShapes(Short * (shapeCircle), colorOrange);
+
+//PlotShapes(Sell * (shapeHollowCircle + shapePositionAbove), colorGold);
+//PlotShapes(Cover * (shapeHollowCircle), colorOrange);
+
+SetChartOptions(0,chartShowArrows|chartShowDates);
+SetChartBkGradientFill( ParamColor("BgTop", colorGrey40),ParamColor("BgBottom", colorDarkGrey));

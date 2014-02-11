@@ -1,0 +1,9 @@
+_SECTION_BEGIN("Price");
+
+upbar = C > Ref( H, -1 );
+downbar = C < Ref( L, -1 );
+
+/* Colourized price bars drawn here */
+barcolor = IIf( downbar, 4, IIf( upbar, 5, 1 ) );
+Plot(100,"Confirming Bar",ValueWhen( barcolor != 0, barcolor ), styleArea|styleNoLabel|styleNoRescale , -0.5, 100 );
+_SECTION_END();

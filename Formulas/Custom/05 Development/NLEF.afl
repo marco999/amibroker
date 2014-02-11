@@ -1,0 +1,62 @@
+_SECTION_BEGIN("NLEF 1");
+SetBarsRequired(20, 0);
+
+//Initial Chart --------------------------------
+
+P = (O+H+L+C)/4;
+X1 = ATR(10);
+//SYSTEM -----------------------------------------------------------------------
+C1 = 7;//Optimize("C1", 7, 2, 30, 1);
+C2 = 21;//Optimize("C2", 21, 2, 30, 1);
+
+A1 = 1/C1*P + (C1-1)/C1*scNLEF(Ref(P,0), C1);
+A2 = 1/C2*P + (C2-1)/C2*scNLEF(Ref(P,), C2);
+
+SetChartOptions(0,chartShowArrows|chartShowDates);
+SetChartBkGradientFill( ParamColor("BgTop", colorBlue),ParamColor("BgBottom", colorDarkBlue));
+//ShortPrice = BuyPrice = CoverPrice = SellPrice = Ref(Open,1);
+
+Plot( C, "Close", ParamColor("Color", colorBlack ), styleCandle); 
+//Plot( A1, "EMA7",colorYellow, styleThick  );
+//Plot( A2, "EMA21",colorOrange, styleLine  );
+
+//ENTRY RULES ------------------------------------------------------------------
+SetPositionSize( 1, spsShares ); 
+
+//BUY --------------------------------------
+C2 = 1; //range of dangling candle
+
+B1 = A1 > A2;
+CloseOnCrossLong = ValueWhen(Cross(A1, A2), C);
+B2 = C > CloseOnCrossLong;
+B3 = (H-C)/(C-O) < C2;
+
+S1 = A1 < A2;// AND A1 < Ref(A1, -1);
+CloseOnCrossShort = ValueWhen(Cross(A2, A1), C);
+S2 = C < CloseOnCrossShort;
+S3 = (C-L)/(O-C) < C2;
+
+_N(Title = StrFormat("Trending: {{NAME}} - {{INTERVAL}} {{DATE}} P %g, Open %g High %g Low %g Close %g (%.1f%%) ROC_A1 (%.1f%%) \nCloseOnCrossLong: %g CloseOnCrossShort: %g ATR(10) %g Vol " +WriteVal( V, 1.0 ) +" {{VALUES}}", P, O, H, L, C, SelectedValue( ROC( P, 1 )), SelectedValue( ROC( A1, 1 )), CloseOnCrossLong, CloseOnCrossShort, X1  ));
+
+
+Buy = B1 AND B2 AND B3;
+Short = S1 AND S2 AND S3;
+
+Sell  = S1 AND S2 AND S3 ;
+Cover  = B1 AND B2 AND B3 ;
+
+
+Buy = ExRem(Buy, Sell);
+Sell = ExRem(Sell, Buy);
+
+
+aaa = Short;
+Short = Buy;
+Buy = aaa;
+
+Sell = Short;
+Cover = Buy;
+
+//PlotShapes(Buy * (shapeCircle + shapePositionAbove), colorGold);
+//PlotShapes(Sell * (shapeCircle), colorOrange);
+_SECTION_END();

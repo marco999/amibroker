@@ -1,0 +1,17 @@
+_SECTION_BEGIN("ATR");
+periods = Param( "Periods", 7, 1, 200, 1 );
+Plot( ATR(periods), _DEFAULT_NAME(), ParamColor( "Color", colorCycle ), ParamStyle("Style") );
+_SECTION_END();
+
+_SECTION_BEGIN("Hurst Graph");
+#include <Hurst.afl>;
+P = (L+H)/2;
+Hst = HurstValue(P);
+Limit = 0.5;
+upbar = Hst > Limit;
+downbar = HST < Limit;
+
+/* Colourized price bars drawn here */
+barcolor = IIf( downbar, ParamColor("Chopping Colour", colorRed), IIf( upbar, ParamColor("Trending Colour", colorBrightGreen), 1 ) );
+Plot(Hst,"",ValueWhen( barcolor != 0, barcolor ), styleArea|styleNoLabel|styleNoRescale , -0.5, 100 );
+_SECTION_END();

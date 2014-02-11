@@ -1,0 +1,35 @@
+SetTradeDelays( 1, 1, 1, 1 );
+SetOption( "InitialEquity", 500000 );
+SetOption( "FuturesMode", True );
+
+MarginDeposit = 200000;
+RoundLotSize = 1;
+PointValue = 10;
+NumberContracts = 1;
+PositionSize = MarginDeposit * NumberContracts;
+
+SetOption( "CommissionMode", 2 );
+SetOption( "CommissionAmount", 14 );
+
+BuyPrice = SellPrice = ShortPrice = CoverPrice = Open;
+
+pMACDFast = 9;
+pMACDMid = 12;
+pMACDSlow = 26;
+pStoL = 80;
+pStoH = 40;
+
+Buy1 = Cross(MACD(pMACDMid,pMACDSlow),Signal(pMACDMid,pMACDSlow,pMACDFast));
+Buy2 = StochD(14,3,3) <= pStoL;
+
+Short1 = Cross(Signal(pMACDMid,pMACDSlow,pMACDFast),MACD(pMACDMid,pMACDSlow));
+Short2 = StochD(14,3,3) >= pStoH;
+
+Buy = Buy1 AND Buy2;
+Short = Short1 AND Short2;
+
+Sell =  Short;
+Cover = Buy;
+
+Buy   = ExRem( Buy, Sell);
+Short = ExRem( Short, Cover);

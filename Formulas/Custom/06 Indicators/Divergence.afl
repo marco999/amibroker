@@ -1,0 +1,950 @@
+/*
+  FileName: Mod - Osc-Price Divergence31
+  October 25, 2005
+  Version 1.0
+  ====================================
+  Use with MACD or Stochastics
+  program detects and plots trendlines on oscillators
+  generates price divergence data
+  ====================================
+  Program is built as an include module
+  Program does not return anything. It plots the divergence area.
+  The global variables below are available to controlling code
+  ===============================================================
+  - Modify divergence detection to account for continuation cases properly
+  - Currently case #18 useed for continuation
+*/
+
+// Parameters needed to be defined before calling this module
+
+ Issue   = CCI(20);
+ Middle  = 0;
+
+//Middle: MACD=0, Stoc=50, RSI=50
+
+Div_Version = 32;
+Pattern =  Diverge = "";
+
+//Parameters
+Trendlines     = Param("Trendlines",3,0,3,1);
+TradeON        = Param("TradeON",1,0,1,1);
+Diag_Trace     = Param("Diag_Trace",0,0,1,1);
+Alerts         = Param("Alerts",0,0,1,1);
+
+function ParameterSetup(Osc_Issue)
+{
+//Variables are defined here if they are assigned values in more than one location
+global Pattern, Diverge, PlotDiverge;
+global PlotOver1, PLotOver2, Line1, Line2;
+global Backtest, explore;
+global Sel_BarIndex, Sel_Osc_Issue;
+
+
+pattern        = "";
+diverge        = "";
+PlotDiverge    = 0;
+
+Plotover1 = Plotover2 = Line1 = Line2 = 0;
+
+Backtest       = Status("action") == 5;
+Explore        = Status("action") == 4;
+
+Sel_OscIssue        =
+IIf(TradeON==1,LastValue(Osc_Issue),SelectedValue(Osc_Issue));
+Sel_BarIndex        =
+IIf(TradeON==1,LastValue(BarIndex()),SelectedValue(BarIndex()));
+
+
+// verify this segment
+if (Backtest ==1)
+{
+TradeON = 0;
+Sel_OscIssue = Osc_Issue;
+Sel_BarIndex = BarIndex();
+
+}
+
+
+} // end ParameterSetup
+
+
+
+
+
+//******************************************************************************************
+//
+//                                        Functions
+//
+//Determine Peaks  - Bearish Reversal
+function DetectLastHigh(Osc_Issue)
+{
+global LastHigh, LastHighBars, TurnDn_OK, Sel_TurnDn_OK;
+
+TurnDn_OK       = False;
+Sel_TurnDn_OK   = False;
+Def_Peak1       = 0;
+Def_Peak2       = 0;
+LastHigh        = 0;
+LastHighBars    = 0;
+
+Def_Peak1       = Osc_Issue < Ref(Osc_Issue,-1) AND Ref(Osc_Issue,-1) >
+Ref(Osc_Issue,-2) AND Osc_Issue < Ref(Osc_Issue,-2);
+Def_Peak2       = Osc_Issue < Ref(Osc_Issue,-1) AND Ref(Osc_Issue,-1) <
+Ref(Osc_Issue,-2) AND Ref(Osc_Issue,-2) > Ref(Osc_Issue,-3) 
+					 AND Osc_Issue < Ref(Osc_Issue,-3);						
+TurnDn_OK       = Def_Peak1 OR Def_Peak2;
+Sel_TurnDn_OK   =
+IIf(TradeON==1,LastValue(TurnDn_OK),SelectedValue(TurnDn_OK));
+
+
+HighBar1        = IIf(Def_Peak1==1,1,0);
+HighBar2        = IIf(Def_Peak2==1,1,0);
+HighBar         = IIf(HighBar1==1,3,4);
+
+LastHigh        = HHV(Osc_Issue,HighBar);
+LastHighBars    = HHVBars(Osc_issue,HighBar);
+
+
+_TRACE("Sel_TurnDn_OK "  + WriteVal(Sel_TurnDn_OK));
+
+if (Diag_Trace==1)
+{
+_TRACE("Detect LastHigh - " + WriteVal(LastHigh,1.2) + " Def Peak1 " +
+WriteVal(Def_Peak1,1.0)
+				+ " Def Peak2 " + WriteVal(Def_Peak2,1.0) + "  TurnDn " +
+WriteVal(TurnDn_OK,1.0));
+_TRACE("Detect LastHigh - Osc " + WriteVal(Osc_Issue,1.2) +  "   Ref Osc -2 " +
+WriteVal(Ref(Osc_Issue,-2))
+				+ "   Ref Osc -3 " + WriteVal(Ref(Osc_Issue,-3)));
+}
+return  Sel_TurnDn_OK;
+} // end DetectLastHigh
+
+
+
+function DetectBearishReversal(Osc_Issue,Middle)
+{
+global SDiv_Code, BT_SDiv_Code, Bear_Diverge;
+
+SDiv_Code = BT_SDiv_Code = Bear_Diverge = 0;
+
+Sel_TurnDn_OK   = DetectLastHigh(Osc_Issue);
+_TRACE("Bear Reversal - Enter Bear Diverge");
+
+if (Sel_TurnDn_OK ==1 OR Backtest==1)
+{
+//Find Current Peak
+FirstBar_CurrGroup   = BarsSince(Cross(Osc_Issue,Middle))+1;
+CurrPeak             = HHV(Osc_Issue,FirstBar_Currgroup);
+CurrPeakBars         = HHVBars(Osc_Issue,FirstBar_Currgroup)+0;
+Sel_CurrPeak         =
+IIf(TradeON==1,LastValue(CurrPeak),SelectedValue(CurrPeak));
+_TRACE("Bear Reversal 02-0 - CPeak " + WriteVal(Sel_CurrPeak,1.2));
+
+//Determine Prior Peak
+//Distances computed relative to selected bar
+i=0;
+_TRACE("Bear Reversal 00 - start of loop  ------- ");
+do
+{
+i++;
+LastBar_PriorGroup       =
+Sel_BarIndex-ValueWhen(Cross(Middle,Osc_Issue),BarIndex(),i);
+FirstBar_PriorGroup      =
+Sel_BarIndex-ValueWhen(Cross(Osc_Issue,Middle),BarIndex(),i+1);
+
+Sel_LastBar_PG           =
+IIf(TradeON==1,LastValue(LastBar_PriorGroup),SelectedValue(LastBar_PriorGroup));
+Sel_FirstBar_PG          =
+IIf(TradeON==1,LastValue(FirstBar_PriorGroup),SelectedValue(FirstBar_PriorGroup));
+
+//Lines below need the selected variable to function correctly
+Peak_PriorGroup          = Ref(HHV(Osc_Issue,Sel_FirstBar_PG -
+Sel_LastBar_PG+1),-Sel_LastBar_PG+1);
+PeakBars_PriorGroup      = Ref(HHVBars(Osc_Issue,Sel_FirstBar_PG -
+Sel_LastBar_PG+1),-Sel_LastBar_PG+1);
+
+Sel_LastBar_PriorGroup   =
+IIf(TradeON==1,LastValue(LastBar_PriorGroup),SelectedValue(LastBar_PriorGroup));
+Sel_PeakBars_PriorGroup  =
+IIf(TradeON==1,LastValue(PeakBars_PriorGroup),SelectedValue(PeakBars_PriorGroup));
+Sel_Peak_PriorGroup      =
+IIf(TradeON==1,LastValue(Peak_PriorGroup),SelectedValue(Peak_PriorGroup));
+
+Final_Bars               = Sel_PeakBars_PriorGroup + Sel_LastBar_PriorGroup;
+
+
+// Diagnostic
+_TRACE("Bear Reversal - loop 01  - i= " + WriteVal(i,1.0) + " FB_PrGr " +
+WriteVal(Sel_FirstBar_PG,1.0) + "  LB_PrGr " + WriteVal(Sel_LastBar_PG,1.0));
+_TRACE("Bear Reversal - loop 02 - CPeak " + WriteVal(Sel_CurrPeak,1.2));
+_TRACE("Bear Reversal - loop 03 - Pk_PG " + WriteVal(Sel_Peak_PriorGroup,1.2) +
+" Pk_PGBars "  + WriteVal(Sel_PeakBars_PriorGroup,1.0) + " F Bars " +
+WriteVal(Final_Bars));
+_TRACE("Bear Reversal - loop 04 - While1= " +
+WriteVal((SelectedValue(Peak_PriorGroup)-Middle),1.2) + "  Compare= " +
+WriteVal(((SelectedValue(CurrPeak)-Middle) / 3),1.2));
+
+} while (((Sel_Peak_PriorGroup-Middle) < (Sel_CurrPeak-Middle) / 3) AND i<10);
+
+
+_TRACE("Bear Reversal 05 - end of loop  ------- ");
+
+
+PriorPeak            = Peak_PriorGroup;
+PriorPeakBars        = Final_Bars;
+
+Sel_LastHigh       =
+IIf(TradeON==1,LastValue(LastHigh),SelectedValue(LastHigh));
+Sel_CurrPeak       =
+IIf(TradeON==1,LastValue(CurrPeak),SelectedValue(CurrPeak));
+Sel_PriorPeak      =
+IIf(TradeON==1,LastValue(PriorPeak),SelectedValue(PriorPeak));
+Sel_LastHighBars   =
+IIf(TradeON==1,LastValue(LastHighBars),SelectedValue(LastHighBars));
+Sel_CurrPeakBars   =
+IIf(TradeON==1,LastValue(CurrPeakBars),SelectedValue(CurrPeakBars));
+Sel_PriorPeakBars  =
+IIf(TradeON==1,LastValue(PriorPeakBars),SelectedValue(PriorPeakBars));
+
+//Needed for Backtest Arrays
+SR1    = CurrPeak > PriorPeak AND LastHigh == CurrPeak;                        
+//Curr Peak Higher - Divergence not possible
+SR2    = CurrPeak < PriorPeak AND LastHigh == CurrPeak;                        
+//Curr Peak Lower
+SR3    = Osc_Issue > Middle AND CurrPeak > PriorPeak AND LastHigh < CurrPeak;  
+//Curr Peak Higher - Last High Lower
+SR4    = Osc_Issue > Middle AND CurrPeak < PriorPeak AND LastHigh < CurrPeak;  
+//Curr Peak Lower  - Best
+SR5    = LastHigh  < Middle   AND LastHigh < CurrPeak AND SR4==0 AND SR3==0;   
+//Continuation signal with Osc_Issue < Middle
+
+
+//Needed for display
+Sel_SR1    = IIf(TradeON==1,LastValue(SR1),SelectedValue(SR1));
+Sel_SR2    = IIf(TradeON==1,LastValue(SR2),SelectedValue(SR2));
+Sel_SR3    = IIf(TradeON==1,LastValue(SR3),SelectedValue(SR3));
+Sel_SR4    = IIf(TradeON==1,LastValue(SR4),SelectedValue(SR4));
+Sel_SR5    = IIf(TradeON==1,LastValue(SR5),SelectedValue(SR5));
+
+
+//Determine Price Divergence
+if (Sel_SR1==1)
+{
+Bear_Diverge = 0;
+SDiv_Code    = 11;
+Diverge      = "";
+Pattern      = "Higher High";
+}
+
+if (Sel_SR2==1)
+{
+Curr_HighPrice     = HHV(High,5);
+Prior_PeakPrice    = Ref(HHV(High,6),-(Sel_PriorPeakBars-3));
+Sel_CHighPrice     =
+IIf(TradeON==1,LastValue(Curr_HighPrice),SelectedValue(Curr_HighPrice));
+Sel_PPeakPrice     =
+IIf(TradeON==1,LastValue(Prior_PeakPrice),SelectedValue(Prior_PeakPrice));
+Sel_Bear_Diverge   = Sel_CHighPrice >= Sel_PPeakPrice;
+
+if (Sel_Bear_Diverge==1)
+{
+Bear_Diverge = 1;
+SDiv_Code    = 13;
+Diverge      = "Bearish";
+Pattern      = "Lower High";
+}
+else
+{
+Bear_Diverge = 0;
+SDiv_Code    = 12;
+Diverge      = "";
+Pattern      = "Lower High";
+}
+}
+
+
+if (Sel_SR3==1)
+{
+_TRACE("Bear Reversal - SR3 - True");
+Curr_HighPrice   = HHV(High,5);
+Curr_PeakPrice   = Ref(HHV(High,6),-(Sel_CurrPeakBars-3));
+Sel_CHighPrice   =
+IIf(TradeON==1,LastValue(Curr_HighPrice),SelectedValue(Curr_HighPrice));
+Sel_CPeakPrice   =
+IIf(TradeON==1,LastValue(Curr_PeakPrice),SelectedValue(Curr_PeakPrice));
+Sel_Bear_Diverge = Sel_CHighPrice >= Sel_CPeakPrice;
+
+
+if (Sel_Bear_Diverge==1)
+{
+Bear_Diverge = 1;
+SDiv_Code    = 15;
+Diverge      = "Bearish";
+Pattern      = "Higher High";
+}
+else
+{
+
+Bear_Diverge = 0;
+SDiv_Code    = 14;
+Diverge      = "";
+Pattern      = "Higher High";
+}
+}
+
+if (Sel_SR4==1)
+{
+_TRACE("Bear Reversal - SR4 - True");
+Curr_HighPrice   = HHV(High,5);
+Curr_PeakPrice   = Ref(HHV(High,6),-(Sel_CurrPeakBars-3));
+Sel_CHighPrice   =
+IIf(TradeON==1,LastValue(Curr_HighPrice),SelectedValue(Curr_HighPrice));
+Sel_CPeakPrice   =
+IIf(TradeON==1,LastValue(Curr_PeakPrice),SelectedValue(Curr_PeakPrice));
+Sel_Bear_Diverge = Sel_CHighPrice >= Sel_CPeakPrice;
+
+if (Sel_Bear_Diverge==1)
+{
+Bear_Diverge = 1;
+SDiv_Code    = 17;
+Diverge      = "Bearish";
+Pattern      = "Lower High";
+}
+else
+{
+Bear_Diverge = 0;
+SDiv_Code    = 16;
+Diverge      = "";
+Pattern      = "Lower High";
+}
+}  // end  Sel_Bear_Diverge
+
+
+
+
+if (Sel_SR5==1)
+{
+Bear_Diverge = 0;
+SDiv_Code    = 18;
+Diverge      = "";
+Pattern      = "Continuation";
+}
+
+
+BT_SDiv_Code = IIf(SR1==1,11,
+               IIf(SR2==1 AND Bear_Diverge==0,12,IIf(SR2==1 AND
+Bear_Diverge==1,13,
+               IIf(SR3==1 AND Bear_Diverge==0,14,IIf(SR3==1 AND
+Bear_Diverge==1,15,
+               IIf(SR4==1 AND Bear_Diverge==0,16,IIf(SR4==1 AND
+Bear_Diverge==1,17,
+               IIf(SR5==1 AND SR4==0 AND SR3==0,18,0))))))));
+
+if (Diag_trace)
+{
+_TRACE("Bear Reversal #00 - Div_Code " + WriteVal(SDiv_Code,1.0) + " --  SR1 "
++ WriteVal(Sel_SR1,1.0)
+             + " SR2 " + WriteVal(Sel_SR2,1.0) + " SR3 " +
+WriteVal(Sel_SR3,1.0) + " SR4 " + WriteVal(Sel_SR4,1.0));
+_TRACE("Bear Reversal #00 - LastHigh " +  WriteVal(Sel_LastHigh,1.2) + "
+CurrPeak " +  WriteVal(Sel_CurrPeak,1.2)
+                        + " PriorPeak " +  WriteVal(Sel_PriorPeak,1.2) );
+}
+
+if (Backtest == 0)
+{
+//Assign Values to coordinates
+y10=Sel_CurrPeak;
+y11=Sel_LastHigh; 
+x10=BarCount - 1 - Sel_CurrPeakBars - (LastValue(BarIndex()) - Sel_BarIndex);
+x11=BarCount - 1 - Sel_LastHighBars - (LastValue(BarIndex()) - Sel_BarIndex);
+Line1  = LineArray( x10, y10, x11, y11, 0 );
+
+y20=Sel_PriorPeak;
+y21=Sel_CurrPeak;
+x20=BarCount - 1 - SelectedValue(Final_Bars)  - (LastValue(BarIndex())-
+Sel_BarIndex);
+x21=BarCount - 1 - Sel_CurrPeakBars   - (LastValue(BarIndex())- Sel_BarIndex);
+Line2 = LineArray( x20, y20, x21, y21, 0 );
+
+//Compute area to paint, based on MACD / Stochastic
+if (Middle==50)
+{
+Area_MaxValue = 100;
+PlotOver2 = IIf(BarIndex()  >= Sel_BarIndex  - (x21-x20)-(x11-x10) -1 AND
+			    	BarIndex() <= Sel_BarIndex  - (x11-x10),Area_MaxValue,0);
+PlotOver1 = IIf(BarIndex()  >= Sel_BarIndex  - (x11-x10) -1 AND BarIndex() <=
+Sel_BarIndex,Area_MaxValue,0);
+
+
+if (SelectedValue(SDiv_Code)==15)
+{
+//Limit the blue bar for divergence to 2nd half of area for code 15
+PlotDiverge = IIf(BarIndex() >= Sel_BarIndex - (x11-x10) -1
+                        AND BarIndex() <= Sel_BarIndex AND
+Diverge=="Bearish",10,0);
+}
+
+if (SelectedValue(SDiv_Code)==13 OR SelectedValue(SDiv_Code)==17)
+{
+PlotDiverge = IIf(BarIndex() >= Sel_BarIndex - (x21-x20)-(x11-x10) -1
+                        AND BarIndex() <= Sel_BarIndex AND
+Diverge=="Bearish",10,0);
+}
+
+}
+else
+{
+Area_MinValue = Max(y10,y20);
+PlotOver2 = IIf(BarIndex()  >= Sel_BarIndex  - (x21-x20)-(x11-x10) -1 AND
+			    	BarIndex() <= Sel_BarIndex  - (x11-x10),Area_MinValue,0);
+PlotOver1 = IIf(BarIndex()  >= Sel_BarIndex  - (x11-x10) -1 AND BarIndex() <=
+Sel_BarIndex,Area_MinValue,0);
+}
+
+} // end if backtest
+
+
+if (Diag_Trace==1)
+{
+_TRACE("Bear Reversal #0 - Backtest " + WriteVal(Backtest,1.0));
+_TRACE("Bear Reversal #1 - Sel_TurnDn_OK " + WriteVal(Sel_TurnDn_OK,1.0));
+_TRACE("Bear Reversal #2 - CurrPeak " + WriteVal(Sel_CurrPeak,1.2) + "  CPBars
+" + WriteVal(Sel_CurrPeakBars,1.0)
+                        + "  DivCode  " + WriteVal(SDiv_Code,1.0));
+_TRACE("Bear Reversal #3 - LB_PGroup " + WriteVal(Sel_LastBar_PG,1.0) + " 
+FB_PGroup " + WriteVal(Sel_FirstBar_PG,1.0));
+_TRACE("Bear Reversal #4 - Pk_PGroup " + WriteVal(PriorPeak,1.2) + "  PB_PG " +
+WriteVal(PriorPeakBars,1.0));
+_TRACE("Bear Reversal #5 - xy1: x10=" + WriteVal(x10,1.0) + " y10=" +
+WriteVal(y10,1.2)
+                       + "   x11=" + WriteVal(x11,1.0) + " y11=" +
+WriteVal(y11,1.2));
+_TRACE("Bear Reversal $6 - xy2: x20=" + WriteVal(x20,1.0) + " y20=" +
+WriteVal(y20,1.2)
+                       + "   x21=" + WriteVal(x21,1.0) + " y21=" +
+WriteVal(y21,1.2));
+_TRACE("Bear Reversal - end ================================================
+");
+
+} // end  Diag_Trace
+} // end  Sel_TurnDn_OK
+//  Add code for troughs
+
+
+else
+{
+SDiv_Code    = 10;
+}
+return Sel_TurnDn_OK;
+} //end DetectBearishReversal
+
+
+
+//Determine Troughs
+function DetectLastLow(Osc_Issue)
+{
+global LastLow, LastLowBars, TurnUp_OK, Sel_TurnUp_OK;
+
+TurnUp_OK      = False;
+Sel_TurnUp_OK  = False;
+LastLow        = 0;
+LastLowBars    = 0;
+Def_Trough1    = 0;
+Def_Trough2    = 0;
+
+Def_Trough1    = Osc_Issue > Ref(Osc_Issue,-1) AND Ref(Osc_Issue,-1) <
+Ref(Osc_Issue,-2) AND Osc_Issue > Ref(Osc_Issue,-2);
+Def_Trough2    = Osc_Issue > Ref(Osc_Issue,-1) AND Ref(Osc_Issue,-1) >
+Ref(Osc_Issue,-2) AND Ref(Osc_Issue,-2) < Ref(Osc_Issue,-3)
+					  AND Osc_Issue > Ref(Osc_Issue,-3);
+
+TurnUp_OK      = Def_Trough1 OR Def_Trough2;
+Sel_TurnUp_OK  =
+IIf(TradeON==1,LastValue(TurnUp_OK),SelectedValue(TurnUp_OK));
+
+
+LowBar1        = IIf(Def_Trough1==1,1,0);
+LowBar2        = IIf(Def_Trough2==1,1,0);
+LowBar         = IIf(LowBar1==1,3,4);
+
+LastLow        = LLV(Osc_Issue,LowBar);
+LastLowBars    = LLVBars(Osc_issue,LowBar);
+
+_TRACE("Bull - LB1 " + WriteVal(LowBar1,1.0) + "  LB2 " + WriteVal(LowBar2,1.0)
++  "  LB " + WriteVal(LowBar,1.0));
+
+   
+
+if (Diag_Trace==1)
+{
+_TRACE("DetectLastLow - LastLow " + WriteVal(LastLow,1.2) + " Def Trough1 " +
+WriteVal(Def_Trough1,1.0)
+				+ " Def Trough2 " + WriteVal(Def_Trough2,1.0) + "  TUp " +
+WriteVal(TurnUp_OK,1.0));
+_TRACE("DetectLastLow - LastLow - Osc " + WriteVal(Osc_Issue,1.2) +  "  Osc -1
+" + WriteVal(Ref(Osc_Issue,-1),1.2)
+              + "   Ref Osc -2 " + WriteVal(Ref(Osc_Issue,-2)) + "   Ref Osc -3
+" + WriteVal(Ref(Osc_Issue,-3)));
+}
+_TRACE("Bear Code - end of Bear function " + WriteVal(SDiv_Code,1.0));
+return   Sel_TurnUp_OK;
+}
+
+
+
+
+
+function DetectBullishReversal(Osc_Issue,Middle)
+{
+global  LDiv_Code, BT_LDiv_Code, BT_Code, Bull_Diverge;
+
+
+
+
+LDiv_Code = BT_LDiv_Code = 0;
+Bull_Diverge = 0;
+
+
+_TRACE("Program Flow - Enter Detect Bullish Reversal - Bar Index " +
+WriteVal(BarIndex(),1.0) +
+               "  Last Bar  " + WriteVal(LastValue(BarIndex()),1.0));
+
+//Determine Trough for current period
+Sel_TurnUp_OK  = DetectLastLow(Osc_Issue);
+_TRACE("Bull Code - Bull function Start " + Name() + "  TurnUp " +
+WriteVal(sel_TurnUp_OK,1.0)+ "  Code= " + WriteVal(LDiv_Code,1.0));
+
+
+if (Sel_TurnUp_OK ==1 OR Backtest==1)        // or 1==1 may be needed
+{
+FirstBar_CurrGroup    = BarsSince(Cross(Middle,Osc_Issue))+1;
+CurrTrough            = LLV(Osc_Issue,FirstBar_Currgroup);
+CurrTroughBars        = LLVBars(Osc_Issue,FirstBar_Currgroup)+0;
+Sel_CurrTrough        =
+IIf(TradeON==1,LastValue(CurrTrough),SelectedValue(CurrTrough));
+
+
+
+//Distances computed relative to selected bar
+i=0;
+_TRACE("Bull Reversal 00 - start of loop  ------ ");
+do
+{
+i++;
+LastBar_PriorGroup         =
+Sel_BarIndex-ValueWhen(Cross(Osc_Issue,Middle),BarIndex(),i);
+FirstBar_PriorGroup        =
+Sel_BarIndex-ValueWhen(Cross(Middle,Osc_Issue),BarIndex(),i+1);
+
+Sel_LastBar_PG             =
+IIf(TradeON==1,LastValue(LastBar_PriorGroup),SelectedValue(LastBar_PriorGroup));
+Sel_FirstBar_PG            =
+IIf(TradeON==1,LastValue(FirstBar_PriorGroup),SelectedValue(FirstBar_PriorGroup));
+
+//Find Trough using scalars - This may interfere with Backtest operation, but needed
+Trough_PriorGroup          = Ref(LLV(Osc_Issue,Sel_FirstBar_PG -
+Sel_LastBar_PG+1),-Sel_LastBar_PG+1);
+TroughBars_PriorGroup      = Ref(LLVBars(Osc_Issue,Sel_FirstBar_PG -
+Sel_LastBar_PG+1),-Sel_LastBar_PG+1);
+
+Sel_LastBar_PriorGroup     =
+IIf(TradeON==1,LastValue(TroughBars_PriorGroup),SelectedValue(TroughBars_PriorGroup));
+Sel_TroughBars_PriorGroup  =
+IIf(TradeON==1,LastValue(LastBar_PriorGroup),SelectedValue(LastBar_PriorGroup));
+Sel_Trough_PriorGroup      =
+IIf(TradeON==1,LastValue(Trough_PriorGroup),SelectedValue(Trough_PriorGroup));
+
+Final_Bars                 = Sel_TroughBars_PriorGroup + Sel_LastBar_PriorGroup
+- 1;
+
+if (Diag_Trace)
+{
+_TRACE("Bull Reversal - loop 01 - i= " + WriteVal(i,1.0) + " FB_PrGr " +
+WriteVal(FirstBar_PriorGroup,1.0)
+             + " / " + WriteVal(Sel_FirstBar_PG,1.0) + "  LB_PrGr " +
+WriteVal(LastBar_PriorGroup,1.0)
+             + " / " + WriteVal(Sel_LastBar_PG,1.0));
+_TRACE("Bull Reversal - loop 02 - Sel_FB_PrGr  " +
+WriteVal(Sel_FirstBar_PG,1.0) + "   Sel_LB_PrGr " +
+WriteVal(Sel_LastBar_PG,1.0));
+_TRACE("Bull Reversal - loop 03 - Tr_PG " + WriteVal(Trough_PriorGroup,1.2) + "
+Tr_PGBars "  + WriteVal(TroughBars_PriorGroup,1.0) + " F Bars " +
+WriteVal(Final_Bars,1.0));
+_TRACE("Bull Reversal - loop 04 - While1= " + WriteVal((Middle -
+SelectedValue(Trough_PriorGroup)),1.2) + "  Compare= " + WriteVal(((Middle -
+SelectedValue(CurrTrough)) / 3),1.2));
+}
+
+} while (((Middle - Sel_Trough_PriorGroup) < (Middle - Sel_CurrTrough) / 3) AND
+i<10);
+
+
+PriorTrough          = Trough_PriorGroup;
+PriorTroughBars      = Final_Bars;
+
+
+//Put Divergence codes into Array
+//Compute results for display
+Sel_LastLow          =
+IIf(TradeON==1,LastValue(LastLow),SelectedValue(LastLow));
+Sel_CurrTrough       =
+IIf(TradeON==1,LastValue(CurrTrough),SelectedValue(CurrTrough));
+Sel_PriorTrough      =
+IIf(TradeON==1,LastValue(PriorTrough),SelectedValue(PriorTrough));
+Sel_LastLowBars      =
+IIf(TradeON==1,LastValue(LastLowBars),SelectedValue(LastLowBars));
+Sel_CurrTroughBars   =
+IIf(TradeON==1,LastValue(CurrTroughBars),SelectedValue(CurrTroughBars));
+Sel_PriorTroughBars  =
+IIf(TradeON==1,LastValue(PriorTroughBars),SelectedValue(PriorTroughBars));
+
+
+
+//Needed for Backtest Arrays
+LR1    = CurrTrough < PriorTrough AND LastLow == CurrTrough;
+LR2    = CurrTrough > PriorTrough AND LastLow == CurrTrough;
+LR3    = Osc_Issue  < Middle AND CurrTrough < PriorTrough AND LastLow >
+CurrTrough;
+LR4    = Osc_Issue  < Middle AND CurrTrough > PriorTrough AND LastLow >
+CurrTrough;
+LR5    = LastLow    > Middle AND LastLow > CurrTrough AND LR3==0 AND LR4==0;
+
+
+
+//Needed for display
+Sel_LR1    = IIf(TradeON==1,LastValue(LR1),SelectedValue(LR1));
+Sel_LR2    = IIf(TradeON==1,LastValue(LR2),SelectedValue(LR2));
+Sel_LR3    = IIf(TradeON==1,LastValue(LR3),SelectedValue(LR3));
+Sel_LR4    = IIf(TradeON==1,LastValue(LR4),SelectedValue(LR4));
+Sel_LR5    = IIf(TradeON==1,LastValue(LR5),SelectedValue(LR5));
+
+
+//Determine Price Divergence
+if (Sel_LR1==1)
+{
+Bull_Diverge = 0;
+LDiv_Code    = 11;
+Diverge      = "";
+Pattern      = "Lower Low";
+}
+
+if (Sel_LR2==1)
+{
+Curr_LowPrice     = LLV(Low,5);
+Prior_LowPrice    = Ref(LLV(Low,6),-(Sel_PriorTroughBars-3));
+Sel_CLowPrice     =
+IIf(TradeON==1,LastValue(Curr_LowPrice),SelectedValue(Curr_LowPrice));
+Sel_PLowPrice     =
+IIf(TradeON==1,LastValue(Prior_LowPrice),SelectedValue(Prior_LowPrice));
+Sel_Bull_Diverge  = Sel_CLowPrice <= Sel_PLowPrice;
+
+if (Sel_Bull_Diverge==1)
+{
+Bull_Diverge = 1;
+LDiv_Code    = 13;
+Diverge      = "Bullish";
+Pattern      = "Higher Low";
+}
+else
+{
+Bull_Diverge = 0;
+LDiv_Code    = 12;
+Diverge      = "";
+Pattern      = "Higher Low";
+}
+}
+
+if (Sel_LR3==1)
+{
+Curr_LowPrice     = LLV(Low,5);
+CT_LowPrice       = Ref(LLV(Low,6),-(Sel_CurrTroughBars-3));
+Sel_CLowPrice     =
+IIf(TradeON==1,LastValue(Curr_LowPrice),SelectedValue(Curr_LowPrice));
+Sel_CTroughPrice  =
+IIf(TradeON==1,LastValue(CT_LowPrice),SelectedValue(CT_LowPrice));
+Sel_Bull_Diverge  = Sel_CLowPrice <= Sel_CTroughPrice;
+
+if (Sel_Bull_Diverge==1)
+{
+Bull_Diverge = 1;
+LDiv_Code    = 15;
+Diverge      = "Bullish";
+Pattern      = "Lower Low";
+}
+else
+{
+Bull_Diverge = 0;
+LDiv_Code    = 14;
+Diverge      = "";
+}
+}
+
+
+if (Sel_LR4==1)
+{
+Curr_LowPrice     = LLV(Low,5);
+CT_LowPrice       = Ref(LLV(Low,6),-(Sel_CurrTroughBars-3));
+Sel_CLowPrice     =
+IIf(TradeON==1,LastValue(Curr_LowPrice),SelectedValue(Curr_LowPrice));
+Sel_CTroughPrice  =
+IIf(TradeON==1,LastValue(CT_LowPrice),SelectedValue(CT_LowPrice));
+Sel_Bull_Diverge  = Sel_CLowPrice <= Sel_CTroughPrice;
+
+if (Sel_Bull_Diverge==1)
+{
+Bull_Diverge = 1;
+LDiv_Code    = 17;
+Diverge      = "Bullish";
+Pattern      = "Higher Low";
+}
+else
+{
+Bull_Diverge = 0;
+LDiv_Code    = 16;
+Diverge      = "";
+Pattern      = "Higher Low";
+}
+}
+
+
+if (Sel_LR5==1)
+{
+Bull_Diverge = 0;
+LDiv_Code    = 18;
+Diverge      = "";
+}
+
+BT_LDiv_Code = IIf(LR1==1,11,
+               IIf(LR2==1 AND Bull_Diverge==0,12,IIf(LR2==1 AND
+Bull_Diverge==1,13,
+               IIf(LR3==1 AND Bull_Diverge==0,14,IIf(LR3==1 AND
+Bull_Diverge==1,15,
+               IIf(LR4==1 AND Bull_Diverge==0,16,IIf(LR4==1 AND
+Bull_Diverge==1,17,
+               IIf(LR5==1 AND LR4==0 AND LR3==0,18,0))))))));
+
+
+if (Diag_trace)
+{
+_TRACE("Bull Reversal #00A - BT_Div_Code " + WriteVal(BT_LDiv_Code,1.0));
+
+_TRACE("Bull Reversal #00B - Div_Code " + WriteVal(LDiv_Code,1.0) + " --  LR1 "
++ WriteVal(LR1,1.0)
+             + " LR2 " + WriteVal(LR2,1.0) + " LR3 " + WriteVal(LR3,1.0) + "
+LR4 " + WriteVal(LR4,1.0));
+_TRACE("Bull Reversal #00C - LastLow " +  WriteVal(Sel_LastLow,1.2) + "
+CurrTrough " +  WriteVal(Sel_CurrTrough,1.2)
+                        + " PriorTrough " +  WriteVal(Sel_PriorTrough,1.2) );
+}
+
+if (Backtest == 0)
+{
+//Assign Values to coordinates
+y10=Sel_CurrTrough;
+y11=Sel_LastLow;
+x10=BarCount - 1 - Sel_CurrTroughBars - (LastValue(BarIndex()) -
+Sel_BarIndex);
+x11=BarCount - 1 - Sel_LastLowBars    - (LastValue(BarIndex()) -
+Sel_BarIndex);
+Line1  = LineArray( x10,y10,x11,y11, 0 );
+
+y20=Sel_PriorTrough;
+y21=Sel_CurrTrough;
+x20=BarCount - 1 - SelectedValue(Final_Bars) - (LastValue(BarIndex())-
+Sel_BarIndex);
+x21=BarCount - 1 - Sel_CurrTroughBars        - (LastValue(BarIndex())-
+Sel_BarIndex);
+Line2 = LineArray( x20, y20, x21, y21, 0 );
+//
+
+
+//Find min value of oscillator in area of interest
+Area_MinValue = 0;
+Area_MaxValue = 0;
+
+if (Middle==50)
+{
+Area_MaxValue = 100;
+PlotOver2   = IIf(BarIndex() >= Sel_BarIndex  - (x21-x20)-(x11-x10)-1 AND
+			    	BarIndex() <= Sel_BarIndex - (x11-x10),Area_MaxValue,0);
+PlotOver1   = IIf(BarIndex() >= Sel_BarIndex - (x11-x10) -1 AND
+				BarIndex() <= Sel_BarIndex,Area_MaxValue,0);
+
+if (SelectedValue(LDiv_Code)==15)
+{
+//Limit the blue bar for divergence to 2nd half of area for code 15
+PlotDiverge = IIf(BarIndex() >= Sel_BarIndex - (x11-x10) -1
+                        AND BarIndex() <= Sel_BarIndex AND
+Diverge=="Bullish",10,0);
+}
+
+if (SelectedValue(LDiv_Code)==13 OR SelectedValue(LDiv_Code)==17)
+{
+PlotDiverge = IIf(BarIndex() >= Sel_BarIndex - (x21-x20)-(x11-x10) -1
+                        AND BarIndex() <= Sel_BarIndex AND
+Diverge=="Bullish",10,0);
+}
+
+
+}
+else
+{
+Area_MinValue = Min(y10,y20);
+PlotOver2 = IIf(BarIndex() >= Sel_BarIndex  - (x21-x20)-(x11-x10) -1 AND
+			    	BarIndex() <= Sel_BarIndex - (x11-x10) -2,Area_MinValue,0);
+PlotOver1 = IIf(BarIndex() >= Sel_BarIndex - (x11-x10) -1 AND
+				BarIndex() <= Sel_BarIndex,Area_MinValue,0);
+}
+
+_TRACE("Plot - Bull  #00C - PlotDiverge " + WriteVal(PlotDiverge,1.0));
+
+} // end if backtest
+
+
+if (Diag_Trace==1)
+{
+_TRACE("Bull Reversal #0 - Backtest " + WriteVal(Backtest,1.0));
+_TRACE("Bull Reversal #1 - DivCode: " + WriteVal(LDiv_Code,1.0) + " LB DivCode
+" + WriteVal(LDiv_Code[BarCount-1],1.0));
+_TRACE("Bull Reversal #2  - Last Low  " + WriteVal(LastLow,1.2));
+_TRACE("Bull Reversal #3 - Area_MinValue " + WriteVal(Area_MinValue,1.2));
+_TRACE("Bull Reversal #4 - CurrTrough " + WriteVal(Sel_CurrTrough,1.2) + " 
+LastLow " + WriteVal(Sel_LastLow,1.2));
+_TRACE("Bull Reversal #5 - FBar_CT " +
+WriteVal(SelectedValue(FirstBar_CurrGroup),1.0) + " BCurrTrough " +
+WriteVal(CurrTroughBars,1.0));
+_TRACE("Bull Reversal #6 - CurrTrough " + WriteVal(CurrTrough,1.2) + "  CTBars
+" + WriteVal(CurrTroughBars,1.0));
+_TRACE("Bull Reversal #7 - LB_PrGroup " + WriteVal(LastBar_PriorGroup,1.0) + " 
+FB_PrGroup " + WriteVal(FirstBar_PriorGroup,1.0));
+_TRACE("Bull Reversal #8 - Tr_PrGroup " + WriteVal(Trough_PriorGroup,1.2) + " 
+TrB_PrG " + WriteVal(TroughBars_PriorGroup,1.0));
+_TRACE("Bull Reversal #9 - PrTrough " + WriteVal(PriorTrough,1.2) + "  PrTrBars
+" + WriteVal(PriorTroughBars,1.0));
+_TRACE("Bull Reversal #10 - xy1: x10=" + WriteVal(x10,1.0) + " y10=" +
+WriteVal(y10,1.2)
+                       + "   x11=" + WriteVal(x11,1.0) + " y11=" +
+WriteVal(y11,1.2));
+_TRACE("Bull Reversal #11 - xy2: x20=" + WriteVal(x20,1.0) + " y20=" +
+WriteVal(y20,1.2)
+                       + "   x21=" + WriteVal(x21,1.0) + " y21=" +
+WriteVal(y21,1.2));
+
+_TRACE("Bull Reversal - end =========================================== ");
+
+} // end Diag_Trace
+} // end Sel_TurnUp_OK
+else
+{
+LDiv_Code    = 10;
+}
+return Sel_TurnUp_OK;
+} // end function BullishReversal
+
+
+
+
+
+
+
+
+function PlotTrendLines(PlotOver1,PlotOver2,BullBear)
+{
+//Plot Trendlines
+_TRACE("Plot - Enter Module ");
+Line1Color   = IIf(BullBear=="Bullish",colorBlack,colorBrown);
+Line2Color   = IIf(BullBear=="Bullish",colorGreen,colorYellow);
+Area1Color   = IIf(BullBear=="Bullish",colorPaleGreen,colorLightYellow);
+Area2Color   = IIf(BullBear=="Bullish",colorAqua,colorLightOrange);
+
+
+if (Trendlines ==1 OR Trendlines ==3)
+{
+Plot( Line1, "Trend line", Line1Color,styleDots|styleThick|styleNoLabel);
+Plot( Line2, "Trend line", Line2Color,styleDots|styleThick|styleNoLabel);
+}
+
+
+if (Trendlines>=2)
+{
+_TRACE("Plot - PlotDiverge " + WriteVal(PlotDiverge,1.0));
+Plot(PlotDiverge,"",colorBlue,styleArea|styleNoLabel);
+Plot(Plotover1,"",Area1color,styleArea|styleNoLabel);
+Plot(Plotover2,"",Area2color,styleArea|styleNoLabel);
+} // end Trendlines
+_TRACE("Plot - End Module ");
+} // end PlotTrendlines
+
+
+//*******************************************************************************************
+//
+//"Div - EndTime " + Now(2);
+
+// START OF CONTROL SECTION
+// Complete loop takes 7ms when no divergence is detected and 17 ms with Divergence
+
+function DivergeControl(Osc_Issue,Middle)
+{
+Backtest = Status("action")==5;
+
+//Declare Variable and set up parameters
+ParameterSetup(Osc_Issue);
+
+//Process Bearish Reversal and Continuation
+RunStatus = Status("action");
+
+StartTime = Now(4);
+_TRACE("Timer Start - " + WriteVal(StartTime,1.0));
+
+Sel_TurnDn_OK  = DetectBearishReversal(Osc_Issue,Middle);
+
+_TRACE("Timer End - " + WriteVal(Now(4),1.0) + " Diff " + WriteVal((Now(4) -
+StartTime),1.4));
+//_TRACE("Control Section - DivCode  " + WriteVal(SDiv_Code,1.0) + "  LB DivCode " +  WriteVal(SDiv_Code[BarCount-1],1.0));
+
+
+Sel_TurnUp_OK = DetectBullishReversal(Osc_Issue,Middle);
+
+if (Backtest == 0 AND (Sel_TurnDn_OK==1 OR Sel_TurnUp_OK==1))
+{
+Bull_Bear =
+WriteIf(Sel_TurnDn_OK==1,"Bearish",WriteIf(Sel_TurnUp_OK==1,"Bullish",""));
+PlotTrendlines(PlotOver1,PlotOver2,Bull_Bear);
+}
+
+
+
+
+_TRACE("Control Section - end
+==============================================================");
+_TRACE("Control Section - end
+==============================================================");
+
+
+if (Status("action")==1 AND Alerts==1)
+{
+_TRACE("Alert section - Bull Code " + WriteVal(LDiv_Code,1.0) + "  Bear Code "
++ WriteVal(SDiv_Code,1.0));
+AlertIf(LDiv_Code==11,"Sound D:\\Amibroker\\Wav Files\\Lower Low.wav","",6,12,0
+);
+AlertIf((LDiv_Code==12 OR LDiv_Code==13 OR LDiv_Code==14) AND
+Bull_Diverge==0,"Sound D:\\Amibroker\\Wav Files\\Higher Low.wav","",5,12,0 );
+AlertIf((LDiv_Code==12 OR LDiv_Code==13 OR LDiv_Code==14) AND
+Bull_Diverge==1,"Sound D:\\Amibroker\\Wav Files\\Bull Diverge.wav","",6,12,0
+);
+AlertIf(SDiv_Code==11,"Sound D:\\Amibroker\\Wav Files\\Higher
+High.wav","",6,12,0 );
+AlertIf((SDiv_Code==12 OR SDiv_Code==13 OR SDiv_Code==14) AND
+Bear_Diverge==0,"Sound D:\\Amibroker\\Wav Files\\Lower High.wav","",7,12,0 );
+AlertIf((SDiv_Code==12 OR SDiv_Code==13 OR SDiv_Code==14) AND
+Bear_Diverge==1,"Sound D:\\Amibroker\\Wav Files\\Bear Diverge.wav","",8,12,0
+);
+}
+return Pattern + " - " + Diverge;
+}  // end DivergeControl
+
+
+Plot(CCI(20),"CCI(20)",colorRed,styleLine);
+divergeControl(Issue,Middle);

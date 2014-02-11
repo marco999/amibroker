@@ -1,0 +1,16 @@
+StDevPer=Param("Std Dev Period",20,10,30);
+lenmax= 28;
+lenmin=7;
+
+v1 = StDev(C,StDevPer) ;
+v2 = HHV(v1, StDevPer) ;
+v3 = LLV(v1, StDevPer) ;
+
+V4=(V1-V3)/(V2-V3);
+currlen = int(lenmin + (lenmax-lenmin)*(1-v4));
+hh = HHV(H, currlen) ;
+ll = LLV(L, currlen) ;
+stoch = IIf ((hh-ll) > 0 ,((Close - ll)/(hh - ll)) * 100,0); ;
+stochma =EMA(Stoch,3);
+Plot(Stoch,"Adaptive Stochastic",colorRed,styleLine);
+Plot(stochma,"StochK",colorBlue,styleLine);

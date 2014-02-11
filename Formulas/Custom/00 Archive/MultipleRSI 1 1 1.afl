@@ -1,0 +1,31 @@
+_SECTION_BEGIN("MultipleRSI");
+Count = 0; 
+result = 0; 
+
+
+for( i = 1; i <= 58; i = i+1 ) 
+{ 
+   TimeFrameSet( i * in5Minute); 
+   m = RSI(7) ; 
+   TimeFrameRestore(); 
+    
+   m = TimeFrameExpand( m, i * in5Minute ); 
+    
+   result = result + IIf( m > 80, 1, IIf( m < 20, -1, 0 ) ); 
+   Count++; 
+} 
+
+AddToComposite( result / Count, "~RSI"+Name(), "X" ); 
+Buy=1;
+
+x = Foreign("~RSI"+Name(),"C"); 
+GraphZOrder=1; 
+PlotText(Now(),SelectedValue(BarIndex())-8,0.8, colorBlack);
+
+Plot( x, "MTRSI", colorLightGrey ); 
+Plot( EMA(x, Param("EMA", 7, 2, 14, 1) ), "EMA(MTRSI,7)", colorBlue, styleThick ); 
+
+PlotGrid(1); 
+PlotGrid(-1);
+SetChartBkGradientFill( ParamColor("BgTop", colorDarkGrey),ParamColor("BgBottom", colorBlack));
+_SECTION_END();

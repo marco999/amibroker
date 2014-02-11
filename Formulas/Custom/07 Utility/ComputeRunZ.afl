@@ -1,0 +1,64 @@
+function ComputeRunZ (P, N)
+{
+	wl = IIf(P>Ref(P,-1),1,0);
+
+	for (i=0; i<N; i++)
+	{
+		Z[i] = 0.0;
+	}
+	for (i=N; i<BarCount; i++)
+	{
+		Runs[i] = 1;
+		Win[i] = 0;
+		Lose[i] = 0;
+		for (j=0; j<N; j++)
+		{
+			if (wl[i-j] == 1)
+			{
+				Win[i]++;
+			}
+			else
+			{
+				Lose[i]++;
+			}
+		}
+		for (j = 0; j<n-1; j++)
+		{
+			if (wl[i-j] != wl[i-j-1])
+			{
+				Runs[i]++;
+			}
+		}
+
+//	Modified May 12, 2007	
+//	to prevent undefined result when
+//	there is a string of wins or losses
+//	equal to or greater than N.
+//	Thanks to D.Y. for catching this.
+
+		if (Win[i]>= N)
+			Z[i]= -5.0;
+		else
+			if (Lose[i]>= N)
+		Z[i]= 5.0;
+		else
+		{
+			x = 2 * Win[i] * Lose[i];
+			Num = N * (Runs[i] - 0.5) - x;
+			Denom = sqrt( (X * (X - N)) / (N - 1) );
+			Z[i] = Num / Denom;
+		} 
+	}
+
+	return Z;
+}
+
+n = Param("n",7,2,50,1);
+
+Z = ComputeRunZ(C,n);
+
+Plot(C,"C", colorBlack,styleCandle|styleOwnScale);
+
+Plot(Z,"Z",colorBlue,styleLine,-2,2);
+Plot(-1.65,"",colorBlue,styleDots);
+Plot(1.65,"",colorBlue,styleDots);
