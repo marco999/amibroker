@@ -1,5 +1,5 @@
 //TESTING ----------------------------------------------------------------------------
-SetOption( "InitialEquity", 100000 );
+SetOption( "InitialEquity", 150000 );
 SetOption( "FuturesMode", True );
 
 MarginDeposit = 25000;
@@ -13,7 +13,7 @@ m1 = MA(C, 15);
 m2 = MA(C, 30);
 m3 = MA(C, 60);
 
-stoploss = C - Ref(m1, -1);
+
 
 SetTradeDelays( 0, 0, 0, 0 );
 BuyPrice = ShortPrice = Close;
@@ -21,6 +21,14 @@ SellPrice = CoverPrice = Ref(m1, -1);
 
 NumberContracts = 1;
 PositionSize = MarginDeposit * NumberContracts;
+stoploss = abs(C - Ref(m1, -1));
+pct_risk = 2;
+worst_loss = 0.5;
+E = Equity();
+//n = -100 * (pct_risk / (2 * worst_loss) );
+n = pct_risk / 100 * E / (stoploss * PointValue) * MarginDeposit;
+//ApplyStop(stopTypeLoss, stopModePercent, AMD_max_stop);
+PositionSize = n;
 
 //PLOTS -----------------------------------------------------------------------------
 _N(Title = StrFormat(_DEFAULT_NAME() + " | {{NAME}} - {{INTERVAL}} | {{DATE}} | Open %g | High %g | Low %g | Close %g (%.1f%%)"

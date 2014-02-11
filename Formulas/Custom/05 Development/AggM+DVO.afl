@@ -1,18 +1,18 @@
 //TESTING ----------------------------------------------------------------------------
-SetTradeDelays( 1, 1, 1, 1 );
-SetOption( "InitialEquity", 500000 );
+SetOption( "InitialEquity", 150000 );
 SetOption( "FuturesMode", True );
 
-MarginDeposit = 200000;
+MarginDeposit = 25000;
 RoundLotSize = 1;
 PointValue = 10;
+SetOption( "CommissionMode", 2 );
+SetOption( "CommissionAmount", 14 + 25 );
+
+SetTradeDelays( 1, 1, 1, 1 );
+BuyPrice = SellPrice = ShortPrice = CoverPrice = Open;
+
 NumberContracts = 1;
 PositionSize = MarginDeposit * NumberContracts;
-
-SetOption( "CommissionMode", 2 );
-SetOption( "CommissionAmount", 14 );
-
-BuyPrice = SellPrice = ShortPrice = CoverPrice = Open;
 
 _SECTION_BEGIN("AggM+DVO");
 //OptimizerSetEngine("cmae");
@@ -29,12 +29,12 @@ AMD_dvo_ma1 = 2; AMD_dvo_ma2 = 13;
 AMD_bull1 = 50; AMD_bear1 = 100 - AMD_bull1;
 
 AMD_stop_level = 2; 
-AMD_p_trail = Optimize("p_trail", 20, 2, 20, 1); 
+AMD_p_trail = 2;
 AMD_max_stop = 1;
 
 //OPTIMIZE VARIABLES (override globals) ----------------------------------------
 //AMD_am1        = Optimize("AMD_am1", 0.5, 0, 1, 0.05);
-AMD_dvo_const  = Optimize("AMD_dvo_const", 0.7, 0.5, 1, 0.05);
+AMD_dvo_const  = Optimize("AMD_dvo_const", 0.75, 0.5, 1, 0.05);
 
 //AggM   -----------------------------------------------------------------------
 Value1 = PercentRank(Close, AMD_V1); 
@@ -98,21 +98,19 @@ Short = ExRem(Short, Cover);
 Cover = ExRem(Cover, Short);
 
 //POSITION SIZING ---------------------------------------------------------
-//pct_risk = 1;
-//mgn = 15000;
-//worst_loss = 0.5;
-//n = -100 * (pct_risk / (2 * worst_loss) );
-n = -AMD_stop_level * ((ShortPrice+BuyPrice)/2)/(AMD_stop_level*ATR(13));
-PositionSize = PosSize = n;
-
+stoploss = IIf(TradeType > 0, abs(C-TrailStopLong ), abs(C-TrailStopShort ));
+pct_risk = 2;
+E = Equity();
+n = pct_risk / 100 * E / (stoploss * PointValue) * MarginDeposit;
 //ApplyStop(stopTypeLoss, stopModePercent, AMD_max_stop);
+PositionSize = n;
 
 
 //PLOTS -----------------------------------------------------------------------------
 P = (O+H+L+C)/4;
 
 _N(Title = StrFormat(_DEFAULT_NAME() + " | {{NAME}} - {{INTERVAL}} | {{DATE}} | P %g | Open %g | High %g | Low %g | Close %g (%.1f%%) |"
-//  + "\n      PositionSize: " + WriteVal( PosSize, 1.2 )
+  + "\n      PositionSize: " + WriteVal( n, 1.2 ) + " | Equity: " + WriteVal(E, 1.2)
   + "\n      Vol: " + WriteVal( V, 1.0 ) +" {{VALUES}}", P, O, H, L, C, SelectedValue( ROC( C, 1 )) ));
 
 Plot( C, "Close", colorBlack, styleCandle); 
@@ -127,14 +125,14 @@ Plot( ProfitTakerLong, "Profit taker long", colorLime, styleThick );
 Plot( TrailStopShort, "Trailing stop short", colorBlueGrey, styleLine );
 Plot( ProfitTakerShort, "Profit taker short", colorRed, styleThick );
 
-PlotShapes(Buy * (shapeCircle + shapePositionAbove), colorGold);
-PlotShapes(Short * (shapeCircle), colorOrange);
+//PlotShapes(Buy * (shapeCircle + shapePositionAbove), colorGold);
+//PlotShapes(Short * (shapeCircle), colorOrange);
 
-PlotShapes(Sell * (shapeHollowCircle + shapePositionAbove), colorGold);
-PlotShapes(Cover * (shapeHollowCircle), colorOrange);
+//PlotShapes(Sell * (shapeHollowCircle + shapePositionAbove), colorGold);
+//PlotShapes(Cover * (shapeHollowCircle), colorOrange);
 
 _SECTION_BEGIN("Volume");
-Plot( Volume, _DEFAULT_NAME(), ParamColor("Color", colorDarkYellow ), styleNoTitle | ParamStyle( "Style", styleHistogram | styleOwnScale | styleThick | styleNoLabel, maskHistogram  ), 2 );
+Plot( Volume, _DEFAULT_NAME(), IIf(C<O,colorRed, colorGreen), styleNoTitle | ParamStyle( "Style", styleHistogram | styleOwnScale | styleThick | styleNoLabel, maskHistogram  ), 3 );
 _SECTION_END();
 
 SetChartOptions(0,chartShowArrows|chartShowDates);
