@@ -24,7 +24,7 @@ PositionSize = MarginDeposit * NumberContracts;
 
 //PLOTS -----------------------------------------------------------------------------
 _N(Title = StrFormat(_DEFAULT_NAME() + " | {{NAME}} - {{INTERVAL}} | {{DATE}} | Open %g | High %g | Low %g | Close %g (%.1f%%)"
-  + "\n      PositionSize: " + WriteVal( PositionSize, 1.0 ) + " Stoploss: " + WriteVal(stoploss) + " |                                                                                                                 MA15(-1): " + WriteVal (Ref(m1, -1))
+  + "\n      PositionSize: " + WriteVal( PositionSize, 1.0 ) + " Stoploss: " + WriteVal(stoploss) + " |                                                                                                              MA15(-1): " + WriteVal (Ref(m1, -1))
   + "\n      Vol: " + WriteVal( V, 1.0 ) +" {{VALUES}}", O, H, L, C, SelectedValue( ROC( C, 1 )) ));
 
 Plot( C, "Close", colorWhite, styleCandle); 
