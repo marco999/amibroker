@@ -2,6 +2,7 @@
 SetOption( "InitialEquity", 150000 );
 SetOption( "FuturesMode", True );
 
+
 MarginDeposit = 25000;
 RoundLotSize = 1;
 PointValue = 10;
