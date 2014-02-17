@@ -1,9 +1,0 @@
-AddToComposite( C, "~~JSETop40MT_MACD", "X"); 
-Buy=1;
-
-x = Foreign("~~JSETop40MT_MACD","C")/40; 
-Plot( x, "JSETop40MT_MACD", colorBlue , styleThick ) ; 
-
-PlotGrid(0.5 ); 
-PlotGrid(0); 
-PlotGrid(-0.5);

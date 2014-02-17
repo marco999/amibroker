@@ -1,5 +1,0 @@
-Title="Three Line Break";
-
-Plot(Close,"close",1,64);
-
-Plot(aceTLB(3,4),"",colorGreen,512+8);

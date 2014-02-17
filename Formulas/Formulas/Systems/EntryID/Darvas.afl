@@ -1,3 +1,0 @@
-Filter = V > 3 * Ref(V,-1);
-
-AddColumn( Close, "Close" );

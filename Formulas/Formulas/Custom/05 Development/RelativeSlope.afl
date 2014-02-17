@@ -1,6 +1,0 @@
-/*Relative Slope*/
-/*by Dimitris Tsokakis*/
-K=EMA((H+L+C)/3,10);
-S1=2*(K-Ref(K,-1))/(K+Ref(K,-1));
-RS=100*EMA(S1,3);
-Graph0=RS;

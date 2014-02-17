@@ -1,7 +1,0 @@
-function Fisher(array)
-// Figure 1.7 on p. 7
-{
-  F = array;
-  F = .25 * log((1+ array)/(1 - array)) + .5 * Ref(F, -1);
-  return F;
-}

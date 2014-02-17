@@ -1,3 +1,0 @@
-PlotForeign("~~~ISEQUITY","In-Sample Equity", colorRed, styleLine);
-PlotForeign("~~~OSEQUITY","Out-Of-Sample Equity", colorGreen, styleLine);
-Title = "{{Name}} - {{Interval}} {{Date}} {{VALUES}}";

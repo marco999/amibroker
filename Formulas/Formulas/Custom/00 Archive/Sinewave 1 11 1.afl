@@ -1,5 +1,0 @@
-price = (H+L)/2;
-
-	Plot(sbMAMA(price,0.5,0.005),"MAMA",4,1);
-	Plot(sbFAMA,"FAMA",6,1);
-	Plot(C,"Close",1,64);

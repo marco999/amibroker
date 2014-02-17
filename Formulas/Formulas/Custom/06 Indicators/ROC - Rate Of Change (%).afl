@@ -1,7 +1,0 @@
-_SECTION_BEGIN("ROC");
-P = ParamField( "Price field" );
-periods = Param("Periods", 15, 1, 200, 1 );
-X = ROC( P, periods);
-Plot( X, _DEFAULT_NAME(), ParamColor( "Color", colorCycle ), ParamStyle("Style")  );
-Plot(WMA(X,9), "WMA", colorBlue);
-_SECTION_END();

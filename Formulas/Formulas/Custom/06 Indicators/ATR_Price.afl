@@ -1,8 +1,0 @@
-P = (H+L+C+O)/4;
-a1 = ATR(10);
-
-x = abs(ROC(a1/p, 5));
-Plot(x, "ATR/P", colorBlue, styleThick);
-
-Filter = 1;
-AddColumn(x, "ATR/P");

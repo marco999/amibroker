@@ -1,7 +1,0 @@
-_SECTION_BEGIN("ALFilter");
-#include<ALFilter.afl>;
-A1 = ALFilter(C,14,5);
-Plot( ROC(A1, 1), "ROC Adaptive Laguerre Filter",colorYellow, styleHistogram  );
-
-SetChartBkGradientFill( ParamColor("BgTop", colorDarkBlue),ParamColor("BgBottom", colorBlack));
-_SECTION_END();
