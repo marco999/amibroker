@@ -1,0 +1,34 @@
+// Paste the code below to your price chart somewhere and green ribbon means
+// both MACD and ADX trending up so if the red ribbon shows up the MACD and theADX
+// are both trending down.
+
+_SECTION_BEGIN("trending ribbon");
+uptrend=PDI()>MDI()AND Signal()<MACD();
+downtrend=MDI()>PDI()AND Signal()>MACD();
+
+
+Plot( 2, /* defines the height of the ribbon in percent of pane width
+*/"ribbon",
+IIf( uptrend, colorGreen, IIf( downtrend, colorRed, 0 )), /* choose color */
+styleOwnScale|styleArea|styleNoLabel, -0.5, 100 );
+
+_SECTION_END();
+
+_SECTION_BEGIN("Rainbow");
+side = 1; 
+increment = Param("Increment",2, 1, 10, 1 ); 
+for( i = 10; i < 80; i = i + increment ) 
+{ 
+ up = MA( C, i ); 
+ down = MA( C, i + increment ); 
+
+ if( ParamToggle("3D effect?", "No|Yes", 1 ) ) 
+   side =  IIf(up<=down AND Ref( up<=down, 1 ), 1, 0.6 ); 
+
+ PlotOHLC( up,up,down,down, "MA"+i, ColorHSB( 3*(i - 10), 
+           Param("Saturation", 128, 0, 255 ),
+           side * Param("Brightness", 255, 0, 255 ) ), styleCloud | styleNoLabel ); 
+} 
+
+
+_SECTION_END();

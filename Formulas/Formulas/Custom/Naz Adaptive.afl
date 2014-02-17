@@ -1,0 +1,105 @@
+_SECTION_BEGIN("Nazgul 1");
+SetBarsRequired(20, 0);
+
+//Initial Chart --------------------------------
+
+P = C;//(O+H+L+C)/4;
+X1 = ATR(10);
+//SYSTEM -----------------------------------------------------------------------
+C1 = int(LastValue(sbDC(P))/4);
+C2 = 3*C1;//21;//Optimize("C2", 21, 2, 30, 1);
+
+//A1 = Ref(1/C1*P + (C1-1)/C1*EMA(Ref(P,-1), C1),1);
+//A2 = Ref(1/C2*P + (C2-1)/C2*EMA(Ref(P,-1), C2),1);
+
+A1 = Ref(EMA(P, C1),0);
+A2 = Ref(EMA(P, C2),0);
+
+
+
+SetChartOptions(0,chartShowArrows|chartShowDates);
+SetChartBkGradientFill( ParamColor("BgTop", colorBlue),ParamColor("BgBottom", colorDarkBlue));
+//ShortPrice = BuyPrice = CoverPrice = SellPrice = Ref(Open,1);
+
+Plot( C, "Close", ParamColor("Color", colorBlack ), styleCandle); 
+Plot( A1, "EMA7",colorYellow, styleLine );
+Plot( A2, "EMA21",colorAqua, styleLine );
+
+ToolTip=StrFormat("Open: %g\nHigh:  %g\nLow:   %g\nClose:  %g (%.1f%%)\nVolume: "+NumToStr( V, 1 ), O, H, L, C, SelectedValue( ROC( C, 1 )));
+
+//ENTRY RULES ------------------------------------------------------------------
+SetPositionSize( 1, spsShares ); 
+
+//BUY --------------------------------------
+C2 = 1; //range of dangling candle
+
+B1 = A1 > A2;
+CloseOnCrossLong = ValueWhen(Cross(A1, A2), C);
+B2 = C > CloseOnCrossLong;
+B3 = (H-C)/(C-O) < C2;
+
+S1 = A1 < A2;// AND A1 < Ref(A1, -1);
+CloseOnCrossShort = ValueWhen(Cross(A2, A1), C);
+S2 = C < CloseOnCrossShort;
+S3 = (C-L)/(O-C) < C2;
+
+pointThreshold = 200;//3 * ATR(15);
+
+Buy = B1 AND B2 AND B3;
+Short = S1 AND S2 AND S3;
+
+Sell  = S1 AND S2 AND S3 ;
+Cover  = B1 AND B2 AND B3 ;
+
+Buy = ExRem(Buy, Sell);
+Sell = ExRem(Sell, Buy);
+
+Short = ExRem(Short, Cover);
+Cover = ExRem(Cover, Short);
+
+PlotShapes(Buy * (shapeCircle + shapePositionAbove), colorGold);
+PlotShapes(Sell * (shapeCircle), colorOrange);
+
+
+
+TradeType = Flip(Buy, Short);
+SetChartBkColor(LastValue(IIf( TradeType>0, colorDarkGreen, colorDarkRed)));
+
+alsi = Ref(Foreign("MAR09ALSI", "C"),0);
+alsiBuy = ValueWhen(Buy==1, alsi);
+alsiSell = ValueWhen(Sell==1, alsi);
+
+
+
+//EMAIL
+AlertIf(Buy, "EMAIL", 
+  "NAZ: \nBuy Price J200: " + BuyPrice  
+ +"\nBuyPrice DEC08ALSI: " + alsiBuy
+  , 1);
+AlertIf(Sell, "EMAIL", 
+  "NAZ: \nSell Price J200: " + SellPrice  
+ +"\nSellPrice DEC08ALSI: " + alsiSell
+  , 1);
+
+_N(Title = StrFormat("      {{NAME}} - {{INTERVAL}} {{DATE}} P %g, Open %g High %g Low %g Close %g (%.1f%%) \n"
+  + ""
+  + "ALSIBuy: %g ALSISell %g LastPL: %g LastValueALSI: %g OpenPL %g"
+  + "\nDom Cycle: %g      Vol: " 
+  + WriteVal( V, 1.0 ) +" {{VALUES}}", P, O, H, L, C, SelectedValue( ROC( C, 1 )), alsibuy, alsisell, alsisell - alsibuy, LastValue(alsi), IIf(TradeType>0,LastValue(alsi) - alsibuy, alsisell-LastValue(alsi)), C1 ));
+//Get the futures price
+Filter=1;
+		AddColumn(Ref(Buy,-1), "Buy");
+		AddColumn(Ref(Sell,-1), "Sell");
+		AddColumn(Ref(Short,-1), "Short");
+		AddColumn(Ref(Cover,-1), "Cover");
+		AddColumn(alsi, "DEC08ALSI");
+		AddColumn(alsisell - alsibuy, "PL");
+
+
+
+_SECTION_END();
+
+
+_SECTION_BEGIN("Volume");
+Plot( Volume, _DEFAULT_NAME(), ColorHSB(Param("Hue", 128, 0, 256, 1), 255,116), styleNoTitle | ParamStyle( "Style", styleHistogram | styleOwnScale | styleThick | styleNoLabel, maskHistogram  ), 2 );
+_SECTION_END();

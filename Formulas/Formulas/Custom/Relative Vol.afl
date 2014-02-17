@@ -1,0 +1,8 @@
+#include<HeatZone.afl>;
+C1 = 18;
+C2 = 480;
+x = StDev(C, C1);
+xavg = EMA(X, C1);
+gap = PercentRank(x - xavg, C2);
+
+Plot(gap, "TRI", colorRed, styleHistogram);

@@ -1,0 +1,49 @@
+_SECTION_BEGIN("S_SAM");
+#include <SAM.afl>
+
+Med = (H+L)/2;
+pds = sbDC(Med);
+
+// SAM
+Band = 0;
+Cutoff = Optimize("Cutoff",8, 1, 20, 1); FP = Optimize("FP",0.01, 0.01, 1, 0.01); Lgamma = 0.5;
+Filt1 = SmoothedAdaptiveMomentum(Med, Cutoff, pds);
+
+/*==============================================================================
+    Entry and Exit Rules
+==============================================================================*/
+//tr = Max(H-L, Max(abs(H-Ref(C, -1)), abs(Ref(C, -1)-L))); //tr[0] = H[0] - L[0];
+
+
+Buy = Cross(Filt1,band);
+Short = Cross( band, Filt1);
+Sell = Short;//Cross(SAR(), Med);
+Cover = Buy;//Cross(Med, SAR());
+Buy[1] = 0; // to avoid false signal at the beginning //ApplyStop(stopTypeLoss, stopModePoint, 15*Ref(ATR(10), -1), True, True );
+
+
+
+/*==============================================================================
+    Automatic Analysis Action Options
+==============================================================================*/
+AAAction = Status("action");
+if(AAAction == actionIndicator)
+{
+    Plot(Filt1, "SAM" + pds, colorRed);
+    PlotShapes(Buy * shapeUpTriangle, colorGreen);
+    PlotShapes(Sell * shapeHollowDownTriangle, colorRed);
+    PlotShapes(Cover * shapeHollowUpTriangle, colorGreen);
+    PlotShapes(Short * shapeDownTriangle, colorRed);
+
+}
+else if(AAAction == actionExplore)
+{
+}    
+else if(AAAction == actionPortfolio)
+{
+        
+}
+/*==============================================================================
+    End of Formula
+==============================================================================*
+_SECTION_END();

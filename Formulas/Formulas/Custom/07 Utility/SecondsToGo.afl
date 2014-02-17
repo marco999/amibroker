@@ -1,0 +1,33 @@
+SetChartBkGradientFill( ParamColor("BgTop", colorGrey40),ParamColor("BgBottom", colorIndigo));
+
+function GetSecondNum()
+{
+    Time 		= Now( 4 );
+    Seconds 	= int( Time % 100 );
+    Minutes 	= int( Time / 100 % 100 );
+    Hours 	= int( Time / 10000 % 100 );
+    SecondNum = int( Hours * 60 * 60 + Minutes * 60 + Seconds );
+    return SecondNum;
+}
+ 
+RequestTimedRefresh( 1 );
+TimeFrame = Interval();
+SecNumber = GetSecondNum();
+Newperiod = SecNumber % TimeFrame == 0;
+SecsLeft	 = SecNumber - int( SecNumber / TimeFrame ) * TimeFrame;
+SecsToGo	 = TimeFrame - SecsLeft;
+ 
+if ( NewPeriod )
+{
+    Say( "Beep, Beep Beep. Beep." );
+    Plot( 1, "", colorYellow, styleArea | styleOwnScale, 0, 1 );
+}
+ 
+Title = "\n" +
+ 
+        "  Current Time: " + Now( 2 ) + "     " +
+        "Chart Interval: " + NumToStr( TimeFrame, 1.0 ) + " Seconds\n" +
+//        " Second Number: " + NumToStr( SecNumber, 1.0, False ) + "\n" +
+        "  Seconds Elapsed: " + NumToStr( SecsLeft, 1.0, False ) + "     " +
+        " Seconds To Go: " + NumToStr( SecsToGo, 1.0, False )    + "     " +
+        " Minutes To Go: " + NumToStr( SecsToGo / 60, 1.0, False );

@@ -1,0 +1,49 @@
+_SECTION_BEGIN("CCT CMO");
+// CCT CMO Oscillator.afl
+//
+//	A CMO Oscillator
+//
+//
+
+//	Two variables are set up for optimizing
+CMOPeriods=Optimize("pds",21,1,101,10);
+AMAAvg=Optimize("AMAAvg",96,1,101,5);
+
+//	The change in the closing price is summed
+//	into two variables -- up days and down days
+SumUp = Sum(IIf(C>Ref(C,-1),(C-Ref(C,-1)),0),CMOPeriods);
+SumDown = Sum(IIf(C<Ref(C,-1),(Ref(C,-1)-C),0),CMOPeriods);
+
+//	The CMO Oscillator calculation
+CMO = 100 * (SumUp - SumDown) / (SumUp + SumDown);
+
+//Plot(CMO,"CMO",colorGreen,styleLine);
+
+//	Smooth the CMO Oscillator
+CMOAvg = DEMA(CMO,AMAAvg);
+//	And smooth it again to form a trigger line
+Trigger = DEMA(CMOAvg,3);
+//	Buy when the smoothed oscillator crosses
+//	up through the trigger line
+Buy = Cross(CMOAvg,Trigger);
+//	Sell on a downward cross, or 6 days,
+//	whichever comes first
+Sell = Cross(Trigger,CMOAvg) OR BarsSince(Buy)>=6;
+
+Buy = ExRem(Buy,Sell);
+Sell = ExRem(Sell,Buy);
+
+Plot(C,"C",colorBlack,styleCandle);
+
+//PlotShapes(Buy*shapeUpArrow+Sell*shapeDownArrow,
+//	IIf(Buy,colorGreen,colorRed));
+//Plot (CMOAvg,"CMOAvg",colorGreen,	style=styleLine|styleOwnScale|styleThick,-100,100);
+//Figure 20.2 CMO Oscillator
+
+price = (H+L)/2;
+Plot(scGauss2ord(C,5),"",3,1);
+Plot(scGauss2ord(C,7),"",9,1);
+	Plot(sbMAMA(price,0.5,0.005),"MAMA",4,1);
+//	Plot(sbOEF(Close),"OEF",4,1);
+
+_SECTION_END();

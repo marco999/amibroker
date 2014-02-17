@@ -1,0 +1,77 @@
+_SECTION_BEGIN("Nazgul Donchian");
+SetBarsRequired(10000, 0);
+//Initial Chart --------------------------------
+
+P = (O+H+L+C)/4;
+X1 = ATR(7);
+//SYSTEM -----------------------------------------------------------------------
+C1 = 7;
+C2 = 21;
+C3 = 89;
+
+A1 = Ref(EMA(P, C1),0);
+A2 = Ref(EMA(P, C2),0);
+
+SetChartOptions(0,chartShowArrows|chartShowDates);
+SetChartBkGradientFill( ParamColor("BgTop", colorDarkGrey),ParamColor("BgBottom", colorBlack));
+//ShortPrice = BuyPrice = CoverPrice = SellPrice = Ref(Open,1);
+
+Plot( C, "Close", colorBlack, styleCandle); 
+Plot( A1, "EMA7",colorYellow, styleLine );
+Plot( A2, "EMA21",colorAqua, styleLine );
+
+ToolTip=StrFormat("Open: %g\nHigh:  %g\nLow:   %g\nClose:  %g (%.1f%%)\nVolume: "+NumToStr( V, 1 ), O, H, L, C, SelectedValue( ROC( C, 1 )));
+
+//ENTRY RULES ------------------------------------------------------------------
+//Long Period Donchian
+LDU = HHV(Ref(H,-1),21);
+LDL = LLV(Ref(L,-1),21);
+LDM = (LDU + LDL)/2;
+FilterDirection = IIf(BarsSince(C > LDU) < BarsSince(C < LDL), 1, -1);
+
+Plot(LDU,"LDU",colorBlue,styleLine);
+Plot(LDM,"LDM",colorGreen,styleLine);
+Plot(LDL,"LDL",colorRed,styleLine); 
+
+
+//BUY --------------------------------------
+C2 = 1; //range of dangling candle
+
+B1 = A1 > A2;
+CloseOnCrossLong = ValueWhen(Cross(A1, A2), C);
+B2 = C > CloseOnCrossLong;
+B3 = (H-C)/(C-O) < C2;
+
+S1 = A1 < A2;
+CloseOnCrossShort = ValueWhen(Cross(A2, A1), C);
+S2 = C < CloseOnCrossShort;
+S3 = (C-L)/(O-C) < C2;
+
+Buy = B1 AND B2 AND B3 ;
+Short = S1 AND S2 AND S3 ;
+
+Sell  = S1 AND S2 AND S3 ;
+Cover  = B1 AND B2 AND B3;
+
+Buy = ExRem(Buy, Sell);
+Sell = ExRem(Sell, Buy);
+
+Short = ExRem(Short, Cover);
+Cover = ExRem(Cover, Short);
+
+//ApplyStop(stopTypeLoss, stopModePoint, 2*ATR(7), 1);
+
+PlotShapes(Buy * (shapeCircle + shapePositionAbove), colorGold);
+PlotShapes(Sell * (shapeCircle), colorOrange);
+
+TradeType = Flip(Buy, Short);
+SetChartBkColor(LastValue(IIf( TradeType>0, colorDarkGreen, colorDarkRed)));
+
+SetPositionSize( 1, spsShares ); 
+
+_N(Title = StrFormat("Naz - Donchian: {{NAME}} - {{INTERVAL}} {{DATE}} P %g, Open %g High %g Low %g Close %g (%.1f%%) \n"
+  + ""
+  + "\n      Vol: "
+  + WriteVal( V, 1.0 ) +" {{VALUES}}", P, O, H, L, C, SelectedValue( ROC( C, 1 )) ));
+
+_SECTION_END();

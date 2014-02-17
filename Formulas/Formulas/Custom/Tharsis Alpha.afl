@@ -1,0 +1,138 @@
+SetBarsRequired(20000,0);
+
+_SECTION_BEGIN("KAMA");
+
+
+P = (O+H+L+C)/4;
+
+
+//Trend/Chop Filter;
+FilterMultiple = 1;
+TimeFrameSet(FilterMultiple * in5Minute);
+C7 = 7;//int(LastValue(sbDC(P)));
+//C7 = IIf(C7 > 89, 89, IIf(C7 < 5, 5, C7));
+uptrend= PDI(C7)>MDI(C7) AND Signal(C7,C7*2,C7/2)<MACD(C7,C7*2);
+downtrend=MDI(C7)>PDI(C7) AND Signal(C7,C7*2,C7/2)>MACD(C7,C7*2);
+TimeFrameRestore();
+
+uptrend = TimeFrameExpand(uptrend, FilterMultiple * in5Minute);
+downtrend = TimeFrameExpand(downtrend, FilterMultiple * in5Minute);
+
+SetPositionSize(1, spsShares);
+
+// Kauffman AMA - use when trending
+
+
+GraphXSpace=2;
+SetChartOptions(0,chartShowArrows|chartShowDates);
+SetChartBkGradientFill( ParamColor("BgTop", colorGrey40),ParamColor("BgBottom", colorIndigo));
+
+T1=C7;//Param("Period",7,5,25,1); //Periods
+V2=2;//Param("Fast",2,2,20,1); //fast
+V3=C7*2;//Param("Slow",5,15,50,1); //slow
+F1=3/(V2+1);
+S1=3/(V3+1);
+dir=abs(P-(Ref(P,-T1)));
+Vol=Sum(abs(P-(Ref(P,-1))),T1);
+ER=dir/Vol; //(C-(Ref(C,-T1)))/Sum(abs(C-(Ref(C,-1))),T1));
+A1=ER*(F1-S1)+S1;
+A2=A1^3;
+KAMA=AMA2(P,A2,1-A2);
+Title="KAMA2 = " + WriteVal(KAMA) + " Periods=" + WriteVal(T1,1.0) 
++ " ROC= " + WriteVal(ROC(KAMA,1)) ;
+
+Trigger = (KAMA+2* Ref(KAMA,-1) + 2*Ref(KAMA,-2)+Ref(KAMA,-3))/6;
+Plot(KAMA,"KAMA",ParamColor("KAMA", colorYellow), styleLine);
+
+/////////////////PloPrice//////////////////////
+Plot(C,"Close",ParamColor("Price", colorBlack),styleCandle);
+
+x = (KAMA - Ref(KAMA, -1));
+
+//ApplyStop(stopTypeLoss, stopModePoint, 3 * ATR(10));
+C1 = 1;
+C2 = 1;
+C3 = 0;
+
+B1 = P >= KAMA AND (x - Ref(x,-1) > 0) AND x >= C1;
+CloseOnCrossLong = ValueWhen(Cross(P, KAMA), P);
+B2 = 1;//P > CloseOnCrossLong;
+B3 = IIf(C==O,1,(H-C)/(C-O) <= C2);
+
+S1 = P <= KAMA AND (x - Ref(x,-1) < 0) AND x <= C1;
+CloseOnCrossShort = ValueWhen(Cross(KAMA, P), P);
+S2 = 1;//P < CloseOnCrossShort;
+S3 = IIf(C==O,1,(C-L)/(O-C) <= C2);
+
+ToolTip = "B1: "+B1 +"\nB2: "+B2 + "\nB3: "+B3 +"\nS1: "+S1 +"\nS2: "+S2 + "\nS3: "+S3;
+
+BuyTrend = B1 AND B2 AND B3;
+ShortTrend = S1 AND S2 AND S3;
+SellTrend = Shorttrend;
+CoverTrend = Buytrend;
+
+Buy = buytrend;//IIf(uptrend, BuyTrend ,IIf(NOT downtrend, BuyChop,0));
+Short = shorttrend;//IIf(downtrend, ShortTrend ,IIf(NOT uptrend, ShortChop,0));
+
+Cover = Buy;
+Sell = Short;
+
+Buy = ExRem(Buy, Sell);
+Sell = ExRem(Sell, Buy);
+
+Short = ExRem(Short, Cover);
+Cover = ExRem(Cover, Short);
+
+
+alsi = Ref(Foreign("MAR09ALSI", "C"),1);
+alsiBuy = ValueWhen(Buy==1, alsi);
+alsiSell = ValueWhen(Sell==1, alsi);
+
+
+PlotShapes(Buy * (shapeSmallUpTriangle), colorGold);
+//PlotShapes(Sell * (shapeHollowCircle), colorOrange);
+
+//PlotShapes(Cover * (shapeHollowCircle), colorGold);
+PlotShapes(Short * (shapeSmallDownTriangle), colorOrange);
+
+TradeType = Flip(Buy, Short);
+
+//Plot( 2, "ribbon",
+//IIf( uptrend, colorGreen, IIf( downtrend, colorRed, 0 )), /* choose color */
+//styleOwnScale|styleArea|styleNoLabel, -0.5, 100 );
+
+SetChartBkColor(LastValue(IIf( TradeType>0, colorDarkGreen, colorDarkRed)));
+//Plot( 2, "Trade",
+//IIf( TradeType>0, colorGreen, colorRed),
+//styleOwnScale|styleArea|styleNoLabel, -0.5, 100 );
+
+//EMAIL
+AlertIf(Cross(TradeType,0.5),"EMAIL", 
+  "Tharsis 1: \nBuy Price J200: " + BuyPrice  
+ +"\nBuyPrice DEC08ALSI: " + alsiBuy
+  , 1);
+AlertIf(Cross(0.5,TradeType), "EMAIL", 
+  "Tharsis 1: \nSell Price J200: " + SellPrice  
+ +"\nSellPrice DEC08ALSI: " + alsiSell
+  , 1);
+
+
+
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} P %g, Open %g High %g Low %g Close %g (%.1f%%)        \n"
+  + "Dom. Cycle: %g Delta X: %g ALSIBuy: %g ALSISell %g LastPL: %g OpenPL %g ALSI %g\nVol: " 
+  +WriteVal( V, 1.0 ) +" {{VALUES}}", P, O, H, L, C, SelectedValue( ROC( C, 1 )), C7, x, alsibuy, alsisell, alsisell - alsibuy, IIf(TradeType>0,SelectedValue(alsi) - alsibuy, alsisell-SelectedValue(alsi)), alsi ));
+
+//Get the futures price
+Filter=1;
+AddColumn(Ref(Buy,-1), "Buy");
+AddColumn(Ref(Sell,-1), "Sell");
+AddColumn(Ref(Short,-1), "Short");
+AddColumn(Ref(Cover,-1), "Cover");
+AddColumn(alsi, "DEC08ALSI");
+AddColumn(alsisell - alsibuy, "PL");
+
+_SECTION_END();
+
+_SECTION_BEGIN("Volume");
+Plot( Volume, _DEFAULT_NAME(), ColorHSB(Param("Hue", 128, 0, 256, 1), 255,116), styleNoTitle | ParamStyle( "Style", styleHistogram | styleOwnScale | styleThick | styleNoLabel, maskHistogram  ), 2 );
+_SECTION_END();

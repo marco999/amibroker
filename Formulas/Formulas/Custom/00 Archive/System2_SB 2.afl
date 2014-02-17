@@ -1,0 +1,34 @@
+_SECTION_BEGIN("System 2");
+
+P = (H+L+C+O)/4;
+
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} %g (%.1f%%) {{VALUES}} ", P,SelectedValue( ROC( P, 1 )) ));
+
+
+Plot( P, "MidPrice", ParamColor("Color", colorBlack ), styleNoTitle | styleLine); 
+A1 = WMA(P, 15);
+A2 = WMA(P, 30);
+A3	= WMA(P, 60);
+
+Bull = A2>A3;
+Bear = A3>A2;
+
+Buy 	= (Cross(C,A1) AND Bull) OR Cross(A2, A3);
+//Cover 	= Cross(A1,A2) ;
+
+Sell	= Cross( LowestSince(LLV(P, 40), P),L ) OR Cross (A3, A2) ;
+//Short	= (Cross(A2,A1) AND Bear) OR Cross (A3, A2);
+
+
+Plot(A1, "MA(15)", colorRed, styleLine);
+Plot(A2, "MA(30)", colorBlue, styleLine);
+Plot(A3, "MA(60)", colorGreen, styleLine);
+
+//PlotShapes( Sell  * shapeDownArrow, colorRed );
+//PlotShapes( Buy  * shapeUpArrow, colorBrightGreen );
+
+//PlotShapes( Short  * shapeHollowDownArrow, colorRed );
+//PlotShapes( Cover  * shapeHollowUpArrow, colorGreen );
+
+
+_SECTION_END();

@@ -1,0 +1,107 @@
+_SECTION_BEGIN("Nazgul SAR");
+
+P = C;//(H+L+C+O)/4;
+SetBarsRequired(2000, 0);
+
+
+//SYSTEM -----------------------------------------------------------------------
+C1 = 7;
+C2 = 21;
+C3 = 6;//Optimize("c2", 5, 1, 7, 1);
+
+A1 = EMA(P, C1);
+A2 = EMA(P, C2);
+
+SetChartOptions(0,chartShowArrows|chartShowDates);
+SetChartBkGradientFill( ParamColor("BgTop", colorBlue),ParamColor("BgBottom", colorDarkBlue));
+
+//ENTRY RULES --------------------------------------
+C2 = 1; //range of dangling candle
+
+af = 0.02;//(ATR(7)/WMA(ATR(7), 7)) / 100;
+mySAR = SAR(LastValue(af), 0.5);
+
+NLO = ((P - A2));
+maxNLO = abs(Max(HHV(NLO, 2000), LLV(NLO, 2000)));
+myNLO = DEMA(NLO / maxNLO,3);
+trigNLO = Ref(myNLO, -1);
+
+C6 = 1;
+P_d = TimeFrameCompress(P, inHourly * C6);
+//A3_d = TimeFrameExpand(scNLEF(P_d, 7), inHourly * C6);
+
+MyHold = 8;//
+Multiple = 1.5;//Param("Multiple", 3, 0.1, 2, 0.05);
+
+ChandHigh = TimeFrameExpand( HHV(P_d, MyHold) - Multiple * ATR(7), inHourly * C6) ; //Chandelier exit line from highest high, 2% (20% actual loss)
+ChandLow = TimeFrameExpand( Max(P_d-10, LLV(P_d, MyHold) + ATR(7) * Multiple), inHourly * C6); //Chandelier exit line from highest high
+
+Plot(ChandHigh, "ChandHigh", colorOrange, styleLine);
+Plot(ChandLow, "ChandLow", colorPlum, styleLine  );
+
+
+
+B1 = myNLO > trigNLO AND C > ChandLow AND abs((H-C)/(C-O))<1;
+CloseOnCrossLong = Ref(ValueWhen(Cross(myNLO, trigNLO), Max(C,O)),0);
+B2 = C > CloseOnCrossLong;
+B3 = A2 - Ref(A2,-1) > 5;
+StopOnLong = ValueWhen(Cross(myNLO, trigNLO), Max(C,O)) - 3 * ATR(7);
+
+S1 = myNLO < trigNLO AND C < ChandHigh AND abs((L-C)/(C-O))<1;
+CloseOnCrossShort = Ref(ValueWhen(Cross(trigNLO, myNLO), Min(C,O)),0);
+S2 = C < CloseOnCrossShort;
+S3 = A2 - Ref(A2,-1) < -5;
+StopOnShort = ValueWhen(Cross(trigNLO, myNLO), Min(C,O)) + 3 * ATR(7);
+
+
+
+//EXIT RULES ----------------------
+Buy = (B1 AND B2 AND B3);
+Short = (S1 AND S2 AND S3);
+
+Sell  = Short;//  OR C > StopOnShort;
+Cover  = Buy;//  OR C < StopOnLong;
+
+Buy = ExRem(Buy, Sell);
+Sell = ExRem(Sell, Buy);
+
+Short = ExRem(Short, Cover);
+Cover = ExRem(Cover, Short);
+
+Plot( C, "Close", colorBlack, styleCandle); 
+Plot( A2, "NLEF",colorAqua, styleLine );
+//Plot( A3_d, "A3_d",colorRed, styleLine );
+//Plot(mySAR, "SAR", colorRed, styleDots);
+
+PlotShapes(Buy * (shapeCircle + shapePositionAbove), colorGold);
+PlotShapes(Sell * (shapeHollowCircle), colorGold);
+
+PlotShapes(Short * (shapeCircle), colorOrange);
+PlotShapes(Cover * (shapeHollowCircle), colorOrange);
+
+TradeType = Flip(Buy, Short);
+//SetChartBkColor(LastValue(IIf( TradeType>0, colorDarkGreen, colorDarkRed)));
+
+//Push position
+//SetPositionSize(1, spsShares);
+SetPositionSize(1, spsShares);
+//SetPositionSize(2, IIf(B1 AND B2 AND B3,spsShares,spsNoChange));
+//SetPositionSize(1, IIf(S1 AND S2 AND S3,spsShares,spsNoChange));
+
+_N(Title = StrFormat("NAZ SAR {{NAME}} - {{INTERVAL}} {{DATE}} P %g \nOpen %g High %g Low %g Close %g (%.1f%%)"
+  + "Vol: "
+  + WriteVal( V, 1.0 ) +" {{VALUES}}", P, O, H, L, C, SelectedValue( ROC( C, 1 ))   ));
+
+V1 = Foreign("AGL-JSE", "V");
+V2 = Foreign("BIL-JSE", "V");
+myVol = (V1 + V2) / 2;
+Plot( myVol, _DEFAULT_NAME(), ColorHSB(Param("Hue", 128, 0, 256, 1), 255,116), styleNoTitle | ParamStyle( "Style", styleHistogram | styleOwnScale | styleThick | styleNoLabel, maskHistogram  ), 2 );
+
+
+Filter = Buy OR Short ;
+AddColumn(abs(ChandHigh-ChandLow), "aCL");
+AddColumn(Buy, "B");
+AddColumn(Short, "S");
+
+
+_SECTION_END();

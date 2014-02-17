@@ -1,0 +1,26 @@
+function LRSI(array, gamma)
+// Figure 14.8 on p. 221.
+{
+  L0 = array;  // Initialize as array
+  L1 = array;
+  L2 = array;
+  L3 = array;
+  LRSIValue = array;
+
+  for(i = 1; i < BarCount; i++)
+  {
+     L0[i] = (1 - gamma)*array[i] + gamma*L0[i-1];
+     L1[i] = - gamma * L0[i] + L0[i-1] + gamma * L1[i-1];
+     L2[i] = - gamma * L1[i] + L1[i-1] + gamma * L2[i-1];
+     L3[i] = - gamma * L2[i] + L2[i-1] + gamma * L3[i-1];
+
+     CU = 0;
+     CD = 0;
+     if (L0[i] >= L1[i]) CU = L0[i] - L1[i]; else (CD = L1[i] - L0[i]);
+     if (L1[i] >= L2[i]) CU = CU + L1[i] - L2[i]; else CD = CD + L2[i] - L1[i];
+     if (L2[i] >= L3[i]) CU = CU + L2[i] - L3[i]; else CD = CD + L3[i] - L2[i];
+
+     if (CU + CD != 0) LRSIValue[i] = CU / (CU + CD);
+  }
+  return LRSIValue;
+}

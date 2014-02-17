@@ -1,0 +1,87 @@
+//---------------------------------------------------------------------------------------------------------------
+//
+//
+// Adaptive Laguerre Filter, from John Ehlers
+// Link :http://www.mesasoftware.com/Papers/Time%20Warp%20Without%20Space%20Travel.exe
+// Another works from Ehlers : http://www.mesasoftware.com/technicalpapers.htm
+//
+// Description :
+// Laguerre Filtering, in its adaptive Version (alpha is automaticaly adapted depending the error of filtering).
+// Can be apply to RSI OR any other datas like the another Laguerre Version on that AFL library :
+// http://www.amibroker.com/library/detail.php?id=450
+// To do :
+// - Kautz Filter, they are generic Name for Laguerre Filter AND treats complex signals (use amplitude AND phase)
+//
+// Coding author: Mich.
+//
+// ---------------------------------------------------------------------------------------------------------------
+//
+
+function ALFilter(price, length, medianlong) {
+result=price;
+L0 = price;
+L1 = price;
+L2 = price;
+L3 = price;
+coef=0.5;
+Diff=0;
+HH=0.1;
+LL=0;
+alpha=0.5;
+
+for(i = 1+length; i < BarCount; i++) {
+	Diff[i] = abs(price[i] - result[i-1]);
+	HH[i] = Diff[i];
+	LL[i] = Diff[i];
+
+	for(j = 0; j < (length-1); j++) {
+		if (Diff[i-j] > HH[i]) HH[i] = Diff[i-j];
+		if (Diff[i-j] < LL[i]) LL[i] = Diff[i-j];
+	}
+
+	if ( (i > length) AND (HH[i] - LL[i] != 0) ) {
+
+	// SLOW :
+	//coef = Median(((Diff - LL) / (HH - LL)), 5);
+
+	// FAST :
+	//----- Speed up the median calculation by placing it inline : Thanks to its author "Not Too Swift"
+	coeftemp=(Diff - LL) / (HH - LL);
+	mlen = medianlong;
+	for(k = mlen - 1; k >= 0; k--) temparray[k] = coeftemp[i + k - (mlen - 1)];
+	temp=0;
+	for(k = mlen - 1; k > 0; k--) {
+		for (j = mlen - 1; j > 0; j--) {
+			if (temparray[j-1] > temparray[j]) {
+				temp = temparray[j-1];
+				temparray[j-1] = temparray[j];
+				temparray[j] = temp;
+			}
+		}
+	}
+	coef[i] = temparray[(mlen/2)-0.5];	
+	//----- End median calculation
+} // end main IF
+
+alpha=coef[i];
+L0[i] = alpha*price[i] + (1 - alpha)*L0[i-1];
+L1[i] = -(1 - alpha)*L0[i] + L0[i-1] + (1 - alpha)*L1[i-1];
+L2[i] = -(1 - alpha)*L1[i] + L1[i-1] + (1 - alpha)*L2[i-1];
+L3[i] = -(1 - alpha)*L2[i] + L2[i-1] + (1 - alpha)*L3[i-1];
+result[i] = (L0[i] + 2*L1[i] + 2*L2[i] + L3[i]) / 6;
+} // end main FOR
+
+return result; 
+} 
+
+
+/* DEMO */
+
+SetBarsRequired(2000,2000);
+
+P = ParamField("Price field",-1);
+periods = Param( "Periods", 20, 1, 40, 1 );
+periodsmedian = Param( "Periods Median", 5, 1, 40, 1 );
+
+Plot( ALFilter(P,periods,periodsmedian), "Adaptive Laguerre Filter",
+ParamColor( "Adaptive Laguerre Filter", colorCycle ), ParamStyle("Style")  );

@@ -1,0 +1,59 @@
+_SECTION_BEGIN("S_RVI");
+SetBarsRequired(10000,0);
+
+//Optimize
+a1 = Optimize("ATRMulti",3.6, 1, 5, 0.2); 
+
+// CyclePeriod
+Med = (H+L)/2;
+pds = sbDC(Med);
+
+//Rules
+//RVI
+RVI = sbRVI(EndValue(pds));
+Trigger = Ref(RVI,-1);
+
+//SNR
+SNR = sbSNR(Med);
+
+//Buy/Sell Rules
+myBuy = Cross(RVI, Trigger) AND SNR > 7;
+myShort  =Cross( Trigger, RVI) AND SNR > 7;
+
+stoplong = scAtrBandLong(H,a1*ATR(EndValue(pds)));
+stopshort = scAtrBandShort(L,a1*ATR(EndValue(pds)));
+myCover = Cross(Med,stopshort);
+mySell = Cross(stoplong,Med);
+
+Cover = ExRem(myCover ,myShort);
+Sell = ExRem(mySell, myBuy);
+Buy =  myBuy;
+Short = myShort;
+
+//Plots
+//---------------------------------------------
+SetChartOptions(0,chartShowArrows|chartShowDates);
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} Open %g, Hi %g, Lo %g, Close %g (%.1f%%) ModATR %g {{VALUES}}", O, H, L, C, SelectedValue( ROC( C, 1 ) ), a1*ATR(EndValue(pds)) ));
+Plot( C, "Close", ParamColor("Color", colorBlack ), styleNoTitle | ParamStyle("Style") | GetPriceStyle() ); 
+Plot(stoplong, "", 3, 1);
+Plot(stopshort, "", 9, 1);
+
+
+PlotShapes( Buy * shapeUpArrow, colorGreen );
+PlotShapes( Short * shapeDownArrow, colorRed );
+PlotShapes( Sell  * shapeCircle, 3 );
+PlotShapes( Cover * shapeCircle, 9, 0, Graph0, 12 );
+//---------------------------------------------
+
+//System Tests
+SetTradeDelays(0,0,0,0);
+BuyPrice = C;
+SellPrice = C;
+// Set the number of positions.
+NumberPositions = 10;
+SetOption("MaxOpenPositions", NumberPositions);
+// Allocate available funds equally among them.
+PositionSize = -100 / NumberPositions;
+Lookback = 5;
+PositionScore = -ROC(C,Lookback);
+_SECTION_END();

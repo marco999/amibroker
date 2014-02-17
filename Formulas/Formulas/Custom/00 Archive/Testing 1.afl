@@ -1,0 +1,45 @@
+_SECTION_BEGIN("Price");
+SetChartOptions(0,chartShowArrows|chartShowDates);
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} Open %g, Hi %g, Lo %g, Close %g (%.1f%%) Vol " +WriteVal( V, 1.0 ) +" {{VALUES}}", O, H, L, C, SelectedValue( ROC( C, 1 )) ));
+Plot( C, "Close", ParamColor("Color", colorBlack ), styleNoTitle | styleCandle); 
+if( ParamToggle("Tooltip shows", "All Values|Only Prices" ) )
+{
+ ToolTip=StrFormat("Open: %g\nHigh:  %g\nLow:   %g\nClose:  %g (%.1f%%)\nVolume: "+NumToStr( V, 1 ), O, H, L, C, SelectedValue( ROC( C, 1 )));
+}
+_SECTION_END();
+
+_SECTION_BEGIN("System 2");
+
+P = (H+L)/2;
+
+A1 = WMA(P, 7);
+A2 = WMA(P, 21);
+A3	= WMA(P, 60);
+
+Bull = A2>A3;
+Bear = A3>A2;
+
+Buy 	= (Cross(A1,A2) AND Bull) OR Cross(A2, A3);
+Cover 	= Cross( H, HHV(P,HHVBars(P,40)));//Cross(A1,A2) ;
+
+Sell	= Cross( LLV(P,LLVBars(P,40)), L);//Cross(A2,A1) ;
+Short	= (Cross(A2,A1) AND Bear) OR Cross (A3, A2);
+
+//Buy 	= ExRem (Buy, Sell * Short);
+//Sell 	= ExRem (Sell, Buy);
+
+//Short 	= ExRem (Short, Cover);
+//Cover = ExRem (Cover, Short);
+
+Plot(A1, "WMA(7)", colorRed, styleLine);
+Plot(A2, "WMA(21)", colorBlue, styleLine);
+Plot(A3, "WMA(60)", colorGreen, styleLine);
+
+PlotShapes( Sell  * shapeDownArrow, colorRed );
+PlotShapes( Buy  * shapeUpArrow, colorGreen );
+
+PlotShapes( Short  * shapeCircle, colorRed );
+PlotShapes( Cover  * shapeCircle, colorGreen );
+
+
+_SECTION_END();

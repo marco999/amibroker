@@ -1,0 +1,35 @@
+SetBarsRequired(200, 0);
+
+// Ehlers ITrend
+// from Ehlers, John F. Cybernetic Analysis for Stocks and Futures. Wiley. 2004. 
+// Chapter 3, p. 21. Code on p. 24.
+
+function ITrend(array, alpha)
+{
+  // initialize early array values and declare as array
+  it = array;
+  //it = (array[2] - 2*array[1] + array[0])/4; This initialization takes a long time to converge.
+  for(i = 2; i < BarCount; i++)
+  {
+    it[i] = (alpha - alpha*alpha/4)*array[i] + 
+         .5*alpha*alpha*array[i-1] -
+         (alpha - .75*alpha*alpha)*array[i-2] +
+         2*(1 - alpha)*it[i-1] -
+         (1 - alpha)*(1 - alpha)*it[i-2];
+  }
+  return it;
+}
+
+function ITrendTrigger(array)
+{
+  trigger = 2*array - Ref(array, -2);
+  return trigger;
+}
+
+Med = (H+L)/2;
+
+// Instantaneous Trend
+Plot(Med, "", colorBlack, styleLine);
+trend = ITrend(Med, .07);
+Plot(trend, "ITrend", colorBlue, styleLine);
+Plot(ITrendTrigger(trend), "", colorRed, styleLine);

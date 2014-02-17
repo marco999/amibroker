@@ -1,0 +1,15 @@
+function CyberCycle( array, alpha )
+{
+  smooth = ( array + 2 * Ref( array, -1 ) +
+             2 * Ref( array, -2 ) + Ref( array, -3 ) ) / 6;
+  // init value
+  Cycle = ( array[ 2 ] - 2 * array[ 1 ] + array[ 0 ] )/4;
+  for( i = 6; i < BarCount; i++ )
+  {
+     Cycle[ i ] = ( ( 1 - 0.5 * alpha) ^ 2 ) *
+                  ( smooth[ i ] - 2 * smooth[ i - 1 ] + smooth[ i - 2] ) +
+                  2 * ( 1 - alpha ) * Cycle[ i - 1 ] -
+                  ( ( 1 - alpha) ^ 2 ) * Cycle[ i - 2 ];
+  }
+  return Cycle;
+}

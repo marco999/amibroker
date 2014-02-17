@@ -1,0 +1,5 @@
+function InverseFisher(array)
+{
+  e2y = exp(2 * array);
+  return (e2y - 1)/(e2y + 1);
+}

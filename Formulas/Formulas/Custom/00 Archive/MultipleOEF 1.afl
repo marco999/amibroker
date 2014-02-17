@@ -1,0 +1,29 @@
+_SECTION_BEGIN("MultipleRSI");
+Count = 0; 
+result = 0; 
+
+P = (O+H+L+C)/4;
+
+for( i = 1; i <= 96; i++ ) 
+{ 
+   TimeFrameSet( i * in5Minute ); 
+   m = TEMA(P,7); 
+   TimeFrameRestore(); 
+    
+   m = TimeFrameExpand( m, i * in5Minute ); 
+    
+   result = result + m; 
+   Count++; 
+} 
+
+AddToComposite( result / Count, "~OEF"+Name(), "X" ); 
+Buy=1;
+
+x = Foreign("~OEF"+Name(),"C"); 
+GraphZOrder=1; 
+
+Plot( x, "MTOEF", colorBlue, styleThick ); 
+
+PlotGrid(1); 
+PlotGrid(-1);
+_SECTION_END();

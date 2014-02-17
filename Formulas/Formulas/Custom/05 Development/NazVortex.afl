@@ -1,0 +1,84 @@
+_SECTION_BEGIN("Nazgul LIVE");
+SetBarsRequired(10000, 0);
+//Initial Chart --------------------------------
+
+P = (O+H+L+C)/4;
+X1 = ATR(7);
+//SYSTEM -----------------------------------------------------------------------
+C1 = 7;
+C2 = 21;
+C3 = 89;
+
+A1 = Ref(EMA(P, C1),0);
+A2 = Ref(EMA(P, C2),0);
+
+SetChartOptions(0,chartShowArrows|chartShowDates);
+SetChartBkGradientFill( ParamColor("BgTop", colorDarkGrey),ParamColor("BgBottom", colorBlack));
+//ShortPrice = BuyPrice = CoverPrice = SellPrice = Ref(Open,1);
+
+Plot( C, "Close", colorBlack, styleCandle); 
+Plot( A1, "EMA7",colorYellow, styleLine );
+Plot( A2, "EMA21",colorAqua, styleLine );
+
+ToolTip=StrFormat("Open: %g\nHigh:  %g\nLow:   %g\nClose:  %g (%.1f%%)\nVolume: "+NumToStr( V, 1 ), O, H, L, C, SelectedValue( ROC( C, 1 )));
+
+//ENTRY RULES ------------------------------------------------------------------
+SetPositionSize( 1, spsShares ); 
+
+// Vortex Indicator
+// S&C Traders Tips Jan 2010
+// Modified According to Au.Tra.Sy Blog
+
+period = 55;
+
+VMP = Sum( abs( H - Ref( L, -1 ) ), period );
+VMM = Sum( abs( L - Ref( H, -1 ) ), period );
+STR = Sum( ATR( 1 ), period );
+
+VIP = VMP / STR * 100;
+VIM = VMM / STR * 100;
+
+//BUY --------------------------------------
+C2 = 1; //range of dangling candle
+
+B1 = A1 > A2;
+CloseOnCrossLong = ValueWhen(Cross(A1, A2), C);
+B2 = C > CloseOnCrossLong;
+
+CloseOnCrossLongV = ValueWhen(Cross(VIP, VIM), C);
+B3 = VIP > VIM AND C > CloseOnCrossLongV;
+
+S1 = A1 < A2;
+CloseOnCrossShort = ValueWhen(Cross(A2, A1), C);
+S2 = C < CloseOnCrossShort;
+
+CloseOnCrossShortV = ValueWhen(Cross(VIM, VIP), C);
+S3 = VIP < VIM AND C < CloseOnCrossShortV;
+
+
+Buy = B1 AND B2 AND B3 ;
+Short = S1 AND S2 AND S3 ;
+
+Sell  = S1 AND S2 AND S3 ;
+Cover  = B1 AND B2 AND B3;
+
+Buy = ExRem(Buy, Sell);
+Sell = ExRem(Sell, Buy);
+
+Short = ExRem(Short, Cover);
+Cover = ExRem(Cover, Short);
+
+//ApplyStop(stopTypeLoss, stopModePoint, 2*ATR(7), 1);
+
+PlotShapes(Buy * (shapeCircle + shapePositionAbove), colorGold);
+PlotShapes(Sell * (shapeCircle), colorOrange);
+
+TradeType = Flip(Buy, Short);
+SetChartBkColor(LastValue(IIf( TradeType>0, colorBlack, colorBlack)));
+
+_N(Title = StrFormat("Naz - LIVE: {{NAME}} - {{INTERVAL}} {{DATE}} P %g, Open %g High %g Low %g Close %g (%.1f%%) \n"
+  + ""
+  + "\n      Vol: "
+  + WriteVal( V, 1.0 ) +" {{VALUES}}", P, O, H, L, C, SelectedValue( ROC( C, 1 )) ));
+
+_SECTION_END();

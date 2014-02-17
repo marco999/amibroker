@@ -1,0 +1,9 @@
+_SECTION_BEGIN("RSI");
+SetChartOptions(0,0,chartGrid30|chartGrid70);
+
+periods = Param( "Periods", 15, 1, 200, 1 );
+r = RSIa((O+H+L+C)/4, periods);
+Plot( r, _DEFAULT_NAME(), ParamColor( "Color", colorCycle ), ParamStyle("Style")  );
+PlotOHLC( r,r,50,r, "", IIf( r> 50, colorRed, colorGreen ), styleCloud | styleClipMinMax, 30, 70 );
+
+_SECTION_END();

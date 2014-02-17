@@ -1,0 +1,147 @@
+_SECTION_BEGIN("Advanced Trend Lines");
+function GetXSupport(Lo, Percentage, Back)
+{
+ return ((BarCount - 1) - LastValue(TroughBars(Lo, Percentage,Back)));
+}
+function GetYSupport(Lo, Percentage, Back)
+{
+ return (LastValue(Trough(Lo, Percentage, back)));
+}
+
+function GetXResistance(Hi, Percentage, Back)
+{
+ return ((BarCount - 1) -LastValue(PeakBars(Hi, Percentage, Back)));
+}
+function GetYResistance(Hi, Percentage, Back)
+{
+ return (LastValue(Peak(Hi, Percentage, Back)));
+}
+function TD_Supply(P)
+{
+	return ( P > Ref(P, 1) AND P > Ref(P, -1) AND P > Ref(C, -2));
+}
+function TD_Demand(P)
+{
+	return ( P < Ref(P, 1) AND P < Ref(P, -1) AND P < Ref(C, -2));
+}
+////////////////////////////////////////////////////////////////////////
+//Parameters
+Percentage 	= Param("Percentage", 1.5, 0.01, 100. ,0.01);
+DrawAllLines 	= ParamToggle("Draw All Lines?", "No|Yes");
+Lines 			= Param("Lines?", 1, 1, BarCount-2);
+DrawR 			= ParamList("Resistance Points", "Off|High to High|High to Low", 1);
+DrawS 			= ParamList("Support Points", "Off|Low to Low|Low to High", 1);
+ShowTDP 		= ParamToggle("Show TD Pionts", "No|Yes", 1);
+AllOrDownR 	= ParamToggle("Resistance Direction", "All|Down");
+AllOrUpS 		= ParamToggle("Support Direction", "All|Up");
+ShowSR			= ParamToggle("Show Vert S/R","No|Yes", 1);
+SRPer			= Param("S/R Percentage", 3, 1);
+SRBack			= Param("S/R Back", 5, 1);
+str = "";
+Res = Sup = 0;
+Con = 1;
+////////////////////////////////////////////////////////////////////////
+Main = C;
+Con = ConS = ConR = 1;
+if(DrawS=="Low to Low")
+{
+	Support1 = L;
+	Support2 = L;
+}
+else
+{
+	Support1 = L;
+	Support2 = H;
+}
+if(DrawR=="High to High")
+{
+	Resistance1 = H;
+	Resistance2 = H;
+}
+else
+{
+	Resistance1 = H;
+	Resistance2 = L;
+}
+////////////////////////////////////////////////////////////////////////
+//Plotting Area
+Plot(Main, "", IIf(C>O,colorGreen, colorRed), styleBar);
+if(DrawAllLines)
+for(i = 2; i<=Lines+1; i++)
+{
+	if(DrawS!="Off")
+	{
+		x0 = GetXSupport(Support1, Percentage, i);
+		x1 = GetXSupport(Support2, Percentage, i-1);
+		y0 = GetYSupport(Support1, Percentage, i);
+		y1 = GetYSupport(Support2, Percentage, i-1);
+		x = LineArray(x0, y0, x1, y1, 1);
+		if(AllOrUpS) ConS = StrToNum(NumToStr(y0 < y1));
+		if(Con AND ConS)
+			Plot(x, "", IIf(LastValue(C) < LastValue(x), colorBlue,colorLightBlue), styleLine|styleThick);
+	}
+	if(DrawR!="Off")
+	{
+		x0 = GetXResistance(Resistance1, Percentage, i);
+		x1 = GetXResistance(Resistance2, Percentage, i-1);
+		y0 = GetYResistance(Resistance1, Percentage, i);
+		y1 = GetYResistance(Resistance2, Percentage, i-1);
+		x = LineArray(x0, y0, x1, y1, 1);
+		if(AllOrDownR) ConR = y0 > y1;
+		if(Con AND ConR)
+			Plot(x, "",  IIf(LastValue(C) < LastValue(x), colorBlue,colorLightBlue), styleLine|styleThick);
+	}
+}
+else
+{
+	if(DrawS!="Off")
+	{
+		x0 = GetXSupport(Support1, Percentage, Lines+1);
+		x1 = GetXSupport(Support2, Percentage, Lines);
+		y0 = GetYSupport(Support1, Percentage, Lines+1);
+		y1 = GetYSupport(Support2, Percentage, Lines);
+		x = LineArray(x0, y0, x1, y1, 1 );
+		Sup = LastValue(LinRegSlope(x, Lines+1));
+		if(AllOrUpS) ConS = y0 < y1;
+		if(Con AND ConS)
+			Plot(x, "", IIf(LastValue(C) < LastValue(x), colorBlue,colorLightBlue), styleLine|styleThick);
+	}
+	if(DrawR!="Off")
+	{
+		x0 = GetXResistance(Resistance1, Percentage, Lines+1);
+		x1 = GetXResistance(Resistance2, Percentage, Lines);
+		y0 = GetYResistance(Resistance1, Percentage, Lines+1);
+		y1 = GetYResistance(Resistance2, Percentage, Lines);
+		x = LineArray(x0, y0, x1, y1, 1 );
+		Res = LastValue(LinRegSlope(x, Lines+1));
+		if(AllOrDownR) ConR = y0 > y1;
+		if(Con AND ConR)
+			Plot(x, "",  IIf(LastValue(C) < LastValue(x), colorBlue,colorLightBlue), styleLine|styleThick);
+	}
+str = "\nR Slope=("+Res+"), S Slope=("+Sup+")";
+}
+
+if(ShowTDP)
+{
+	PlotShapes(TD_Supply(H)*shapeSmallCircle, colorRed, 0, H, H*.001);
+	PlotShapes(TD_Demand(L)*shapeSmallCircle, colorGreen, 0, L, -L*.001);
+}
+if(ShowSR)
+{
+	for(i=1; i<=SRBack; i++)
+	{
+		x0 = GetXSupport(L, SRPer, i);
+		x1 = BarCount-1;
+		y0 = GetYSupport(L, SRPer, i);
+		x = LineArray(x0, y0, x1, y0, 0);
+		Plot(x, "", IIf(LastValue(C) > x, colorDarkGreen, colorDarkRed), styleLine|styleDashed|styleThick);
+		x0 = GetXResistance(H, SRPer, i);
+		y0 = GetYResistance(H, SRPer, i);
+		x = LineArray(x0, y0, x1, y0, 0);
+		Plot(x, "", IIf(LastValue(C) > x, colorDarkGreen, colorDarkRed), styleLine|styleDashed|styleThick);
+
+	}
+}
+Title =FullName()+" ({{NAME}})\n{{DATE}}\n"+"Open: "+O+", Hi: "+H+", Lo: "+L+", Close: "+C+StrFormat(" (%.2f  %.2f\%)", C-Ref(C, -1), SelectedValue(ROC(C, 1)))+str;
+
+_SECTION_END();

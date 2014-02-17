@@ -1,0 +1,119 @@
+_SECTION_BEGIN("Nazgul 1");
+SetBarsRequired(200, 0);
+
+function Momentum( array, period )
+{
+  return array - Ref( array, -period );
+}
+
+P = C;//(O+H+L+C)/4;
+X1 = ATR(7);
+//SYSTEM -----------------------------------------------------------------------
+C1 = 7;
+C2 = 21;
+C3 = 89;
+
+A1 = Ref(EMA(P, C1),0);
+A2 = Ref(EMA(P, C2),0);
+
+SetChartOptions(0,chartShowArrows|chartShowDates);
+SetChartBkGradientFill( ParamColor("BgTop", colorBlue),ParamColor("BgBottom", colorDarkBlue));
+//ShortPrice = BuyPrice = CoverPrice = SellPrice = Ref(Open,1);
+
+Plot( C, "Close", ParamColor("Color", colorBlack ), styleCandle); 
+Plot( A1, "EMA7",colorYellow, styleLine );
+Plot( A2, "EMA21",colorAqua, styleLine );
+
+dailyP = TimeFrameCompress(P, inHourly);
+dailyEMA = EMA(dailyP, 21);
+expandEMA = TimeFrameExpand(dailyEMA, inHourly);
+Plot(expandEMA, "expandEMA(7)", colorPink);
+
+ToolTip=StrFormat("Open: %g\nHigh:  %g\nLow:   %g\nClose:  %g (%.1f%%)\nVolume: "+NumToStr( V, 1 ), O, H, L, C, SelectedValue( ROC( C, 1 )));
+
+
+//ENTRY RULES --------------------------------------
+//get in based on slope of longer average
+
+A3 = Momentum(C, 7);
+
+B1 = ROC(A3,1) > 0;
+S1 = ROC(A3,1) < 0;
+
+EOsc = MA(C,5)-MA(C,34);
+
+Buy = B1;
+Short = S1;
+
+//EXIT RULES ----------------------
+//if price crosses below entry level, get out
+
+Sell  = Cross(ValueWhen(Buy, H), C  );
+Cover  = Cross(C, ValueWhen(Short, L));
+
+Buy = ExRem(Buy, Sell);
+Sell = ExRem(Sell, Buy);
+
+Short = ExRem(Short, Cover);
+Cover = ExRem(Cover, Short);
+
+
+
+//position rules
+//if price moves in your favour by ATR(1), increase position and move stop to this point
+SetPositionSize(1, spsShares);
+//SetPositionSize(2, IIf(EOsc > 0,spsShares,spsNoChange));
+//SetPositionSize(2, IIf(EOsc > 0,spsShares,spsNoChange));
+
+
+//show the number of contracts to buy on the chart
+dist = 1.5*ATR(10); 
+for( i = 0; i < BarCount; i++ ) 
+{
+pos = 1;//IIf(Buy[i] , 2, IIf(Short[i] , 2, 1));
+if( Buy[i] ) PlotText( "Buy " + pos +"\n@" + C[ i ], i, L[ i ]-dist[i], colorBrightGreen, colorBlack ); 
+if( Sell[i] ) PlotText( "Sell " + pos +"\n@" + C[ i ], i, H[ i ]+dist[i], colorRed, colorYellow ); 
+} 
+
+PlotShapes(Buy * (shapeCircle + shapePositionAbove), colorGold);
+//PlotShapes(Sell * (shapeHollowCircle), colorGold);
+
+PlotShapes(Short * (shapeCircle), colorOrange);
+//PlotShapes(Cover * (shapeHollowCircle), colorOrange);
+
+TradeType = Flip(Buy, Short);
+SetChartBkColor(LastValue(IIf( TradeType>0, colorDarkGreen, colorDarkRed)));
+
+alsi = Ref(Foreign("JUN09ALSI", "C"),1);
+alsiBuy = ValueWhen(Buy==1, Ref(alsi,0));
+alsiSell = ValueWhen(Sell==1, Ref(alsi,0));
+
+//EMAIL
+//AlertIf(Cross(A1,A2), "EMAIL", 
+//  "NAZ System: Averages crossed up: \nBuy Price J200: " + BuyPrice  , 1);
+//AlertIf(Cross(A2,A1), "EMAIL", 
+//  "NAZ System: Averages crossed down: \nSell Price J200: " + SellPrice  , 1);
+
+_N(Title = StrFormat("      {{NAME}} - {{INTERVAL}} {{DATE}} P %g, Open %g High %g Low %g Close %g (%.1f%%) \n"
+  + ""
+  + "ALSIBuy: %g ALSISell %g LastPL: %g LastValueALSI: %g OpenPL %g"
+  + "\n      Vol: "
+  + WriteVal( V, 1.0 ) +" {{VALUES}}", P, O, H, L, C, SelectedValue( ROC( C, 1 )), alsibuy, alsisell, alsisell - alsibuy, LastValue(alsi), IIf(TradeType>0,LastValue(alsi) - alsibuy, alsisell-LastValue(alsi)) ));
+//Get the futures price
+Filter=1;
+		AddColumn(P, "P");
+		AddColumn(Ref(Buy,-1), "Buy");
+		AddColumn(Ref(Sell,-1), "Sell");
+		AddColumn(Ref(Short,-1), "Short");
+		AddColumn(Ref(Cover,-1), "Cover");
+		AddColumn(alsi, "DEC08ALSI");
+		AddColumn(alsisell - alsibuy, "PL");
+
+
+
+_SECTION_END();
+
+
+_SECTION_BEGIN("Volume");
+//Plot( Volume, _DEFAULT_NAME(), ColorHSB(Param("Hue", 128, 0, 256, 1), 255,116), styleNoTitle | ParamStyle( "Style", styleHistogram | styleOwnScale | styleThick | styleNoLabel, maskHistogram  ), 2 );
+_SECTION_END();

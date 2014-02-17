@@ -1,0 +1,24 @@
+_SECTION_BEGIN("MultipleMACD 1");
+Count = 0; 
+result = 0; 
+
+for( i = 2; i <= 60; i++ ) 
+{ 
+   TimeFrameSet( i * in5Minute ); 
+   m = MACD(12, 26 ); 
+   TimeFrameRestore(); 
+   m = IIf( TimeFrameExpand( m, i * in5Minute ) > 0, 1, -1 ); 
+   result = result + m; 
+   Count++; 
+} 
+
+AddToComposite( result / Count, "~MACD"+Name(), "X" ); 
+Buy=1;
+
+x = Foreign("~MACD"+Name(),"C"); 
+
+Plot( x, "MTMACD", colorBlue , styleThick ) ; 
+
+PlotGrid(0.5 ); 
+PlotGrid(-0.5);
+_SECTION_END();

@@ -1,0 +1,20 @@
+function KalmanFilter(array, period)
+{
+p1 = period;
+//work out Tillman moving average (6th order Kalman filter)
+s = 0.84;
+periods = 2/(p1+1);
+e1=AMA(array,periods);
+e2=AMA(e1,Periods);
+e3=AMA(e2,Periods);
+e4=AMA(e3,Periods);
+e5=AMA(e4,Periods);
+e6=AMA(e5,Periods);
+c1=-s*s*s;
+c2=3*s*s+3*s*s*s;
+c3=-6*s*s-3*s-3*s*s*s;
+c4=1+3*s+s*s*s+3*s*s;
+x1=c1*e6+c2*e5+c3*e4+c4*e3;
+
+return x1;
+}

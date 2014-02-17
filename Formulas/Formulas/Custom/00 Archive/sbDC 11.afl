@@ -1,0 +1,8 @@
+_SECTION_BEGIN("sbDC");
+SetBarsRequired(10000, 10000);
+
+Med = (H+L)/2;
+dc = sbDC(Med);
+Plot(dc, "sbCyclePeriod", colorRed,styleLine);
+Plot(1,"", IIf(dc>15,colorGreen, colorRed), styleArea);
+_SECTION_END();
