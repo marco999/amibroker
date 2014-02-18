@@ -1,0 +1,10 @@
+har = Foreign("HARMONY", "C");
+ang = Foreign("ANGGOLD", "C");
+
+a1 = har / ang;
+
+P = PercentRank(a1, 200);
+
+Plot(P, "P", colorRed);
+SetChartOptions(0,chartShowDates);
+_N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} %g (%.1f%%) " +WriteVal( V, 1.0 ) +" {{VALUES}}", C, SelectedValue( ROC( C, 1 )) ));

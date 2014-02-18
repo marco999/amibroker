@@ -1,7 +1,7 @@
 _SECTION_BEGIN("Price");
 SetChartOptions(0,chartShowArrows|chartShowDates);
 _N(Title = StrFormat("{{NAME}} - {{INTERVAL}} {{DATE}} Open %g, Hi %g, Lo %g, Close %g (%.1f%%) Vol " +WriteVal( V, 1.0 ) +" {{VALUES}}", O, H, L, C, SelectedValue( ROC( C, 1 )) ));
-Plot( C, "Close", ParamColor("Color", colorBlack ), styleCandle | styleNoTitle | ParamStyle("Style") | GetPriceStyle() ); 
+Plot( C, "Close", ParamColor("Color", colorDefault ), styleNoTitle | ParamStyle("Style") | GetPriceStyle() ); 
 _SECTION_END();
 
 _SECTION_BEGIN("MA");
@@ -13,13 +13,13 @@ _SECTION_END();
 _SECTION_BEGIN("Mid MA");
 P = ParamField("Price field",-1);
 Periods = Param("Periods", 45, 2, 300, 1 );
-Plot( MA( P, Periods ), _DEFAULT_NAME(), ParamColor( "Color", colorCycle ), ParamStyle("Style", styleLine | styleNoLabel ) | styleNoRescale ); 
+Plot( MA( P, Periods ), _DEFAULT_NAME(), ParamColor( "Color", colorCycle ), ParamStyle("Style", styleHidden | styleLine | styleNoLabel ) | styleNoRescale ); 
 _SECTION_END();
 
 _SECTION_BEGIN("Long MA");
 P = ParamField("Price field",-1);
 Periods = Param("Periods", 100, 2, 400, 1 );
-Plot( MA( P, Periods ), _DEFAULT_NAME(), ParamColor( "Color", colorCycle ), ParamStyle("Style", styleLine | styleNoLabel ) | styleNoRescale ); 
+Plot( MA( P, Periods ), _DEFAULT_NAME(), ParamColor( "Color", colorCycle ), ParamStyle("Style", styleHidden | styleLine | styleNoLabel ) | styleNoRescale ); 
 _SECTION_END();
 
 _SECTION_BEGIN("BBands");
@@ -27,14 +27,11 @@ P = ParamField("Price field",-1);
 Periods = Param("Periods", 15, 2, 100, 1 );
 Width = Param("Width", 2, 0, 10, 0.05 );
 Color = ParamColor("Color", colorLightGrey );
+Color = ColorBlend( Color,  GetChartBkColor(), 0.5 );
 Style = ParamStyle("Style", styleLine | styleNoLabel ) | styleNoRescale;;
 Plot( bbt = BBandTop( P, Periods, Width ), "BBTop" + _PARAM_VALUES(), Color, Style ); 
 Plot( bbb = BBandBot( P, Periods, Width ), "BBBot" + _PARAM_VALUES(), Color, Style ); 
-PlotOHLC( bbt, bbt, bbb, bbb, "", ColorBlend( Color, colorWhite, 0.9 ), styleNoLabel | styleCloud | styleNoRescale, Null, Null, Null, -1 );
-_SECTION_END();
-
-_SECTION_BEGIN("Volume");
-Plot( Volume, _DEFAULT_NAME(), ParamColor("Color", colorAqua ), styleNoTitle | ParamStyle( "Style", styleHistogram | styleOwnScale | styleThick | styleNoLabel, maskHistogram  ), 2 );
+PlotOHLC( bbt, bbt, bbb, bbb, "", ColorBlend( Color, GetChartBkColor(), 0.7 ), styleNoLabel | styleCloud | styleNoRescale, Null, Null, Null, -1 );
 _SECTION_END();
 
 _SECTION_BEGIN("Price Interpretation");

@@ -1,16 +1,7 @@
 //TESTING ----------------------------------------------------------------------------
 SetOption( "FuturesMode", True );
 
-if( GetDatabaseName() == "eSignal" )
-{
-SetOption( "InitialEquity", 250000 );
-MarginDeposit = 25000;
-RoundLotSize = 1;
-PointValue = 10;
-SetOption( "CommissionMode", 2 );
-SetOption( "CommissionAmount", 14 );
-} 
-else if ( GetDatabaseName() == "Data" )
+if ( GetDatabaseName() == "Data" )
 {
 SetOption( "InitialEquity", 250000 );
 MarginDeposit = 25000;
@@ -34,20 +25,22 @@ PositionSize = MarginDeposit * NumberContracts;
 OptimizerSetEngine("trib");
 //SYSTEM -----------------------------------------------------------------------
 AMD_V1 = 55; AMD_V2 = 13;
-AMD_am1 = 0.65; AMD_am2 = 1-AMD_am1;
+AMD_am1 = 0.80; AMD_am2 = 1-AMD_am1;
 
 AMD_s1 = 13;
 AMD_w1 = 0.2; AMD_w2 = 0.3;
 AMD_dvo_ma1 = 2; AMD_dvo_ma2 = 13; 
 
-AMD_bull1 = 65; AMD_bear1 = 100 - AMD_bull1;
+AMD_bull1 = 80; AMD_bear1 = 100 - AMD_bull1;
 
 AMD_stop_level = 2; 
-AMD_p_trail = Optimize("p_trail", 14, 2, 34, 1);
+AMD_p_trail = 13;
 
 //OPTIMIZE VARIABLES (override globals) ----------------------------------------
-//AMD_am1        = Optimize("AMD_am1", 0.5, 0, 1, 0.05);
-AMD_dvo_const  = Optimize("dvo_const", 0.4, 0, 2, 0.05);
+AMD_p_trail       = Optimize("p_trail", 14, 2, 89, 1);
+AMD_am1 				= Optimize("AMD_am1", 0.8, 0, 1, 0.05);
+AMD_dvo_const  	= Optimize("dvo_const", 0.8, 0, 1, 0.05);
+AMD_bull1			= Optimize("AMD_bull1", 0.8, 0, 1, 0.05);
 
 //AggM   -----------------------------------------------------------------------
 Value1 = PercentRank(Close, AMD_V1); 
@@ -97,8 +90,8 @@ TrailStopShort = LLV( C + AMD_stop_level * ATR(AMD_p_trail), AMD_p_trail );
 //ProfitTakerShort = EMA( L, AMD_p_trail ) - AMD_stop_level * ATR(AMD_p_trail);
 
 //ENTRY RULES ------------------------------------------------------------------
-Buy = TradeType > 0 AND dvo < 35 AND C > TrailStopLong AND dvo_constants == True AND aggm_constants == 1;
-Short = TradeType <= 0 AND dvo > 65 AND C < TrailStopShort AND dvo_constants == 1 AND aggm_constants == 1;
+Buy = TradeType > 0 AND dvo < 20 AND C > TrailStopLong AND dvo_constants == True AND aggm_constants == 1;
+Short = TradeType <= 0 AND dvo > 80 AND C < TrailStopShort AND dvo_constants == 1 AND aggm_constants == 1;
 
 Sell = C < Ref(TrailStopLong, -1);
 Cover = C > Ref(TrailStopShort, -1);
@@ -116,16 +109,7 @@ n = pct_risk / 100 * E / (stoploss * PointValue) * MarginDeposit;
 //PositionSize = n;
 
 SetTradeDelays( 1, 1, 0, 0 );
-if( GetDatabaseName() == "eSignal" )
-{
-BuyPrice = ShortPrice = Foreign("ALSI5M", "O", 0);
-fC = Foreign("ALSI5M", "C", 0);
-TrailStopLongF = HHV( fC - AMD_stop_level * ATR(AMD_p_trail), AMD_p_trail );
-TrailStopShortF = LLV( fC + AMD_stop_level * ATR(AMD_p_trail), AMD_p_trail );
-SellPrice = Ref(TrailStopLongF, -1);
-CoverPrice = Ref(TrailStopShortF, -1);
-}
-else if( GetDatabaseName() == "eSignal" )
+if( GetDatabaseName() == "Data" )
 {
 BuyPrice = ShortPrice = Foreign("ALSI1D", "O", 0);
 fC = Foreign("ALSI1D", "C", 0);
