@@ -108,7 +108,7 @@ E = Equity();
 n = pct_risk / 100 * E / (stoploss * PointValue) * MarginDeposit;
 //PositionSize = n;
 
-SetTradeDelays( 1, 1, 0, 0 );
+SetTradeDelays( 1, 0, 1, 0 );
 if( GetDatabaseName() == "Data" )
 {
 BuyPrice = ShortPrice = Foreign("ALSI1D", "O", 0);

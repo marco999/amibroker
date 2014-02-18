@@ -1,4 +1,3 @@
-#include<HeatZone.afl>;
 
 SetChartOptions(0,chartShowArrows|chartShowDates);
 SetChartBkGradientFill( ParamColor("BgTop", colorGrey40),ParamColor("BgBottom", colorDarkGrey));

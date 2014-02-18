@@ -33,21 +33,21 @@ PositionSize = MarginDeposit * NumberContracts;
 
 OptimizerSetEngine("trib");
 //SYSTEM -----------------------------------------------------------------------
-AMD_V1 = 55; AMD_V2 = 13;
-AMD_am1 = 0.65; AMD_am2 = 1-AMD_am1;
+AMD_am1 				= Optimize("AMD_am1", 0.8, 0, 1, 0.05);
+AMD_dvo_const  	= Optimize("dvo_const", 0.8, 0, 1, 0.05);
+AMD_s1 				= Optimize("s1", 13, 5, 13, 0.5);
 
-AMD_s1 = 13;
+AMD_am2 = 1 - AMD_am1;
+AMD_V1 = 55; AMD_V2 = 13;
+
+
 AMD_w1 = 0.2; AMD_w2 = 0.3;
 AMD_dvo_ma1 = 2; AMD_dvo_ma2 = 13; 
 
 AMD_bull1 = 65; AMD_bear1 = 100 - AMD_bull1;
 
 AMD_stop_level = 2; 
-AMD_p_trail = Optimize("p_trail", 14, 2, 34, 1);
-
-//OPTIMIZE VARIABLES (override globals) ----------------------------------------
-//AMD_am1        = Optimize("AMD_am1", 0.5, 0, 1, 0.05);
-AMD_dvo_const  = Optimize("dvo_const", 0.4, 0, 2, 0.05);
+AMD_p_trail = 13;
 
 //AggM   -----------------------------------------------------------------------
 Value1 = PercentRank(Close, AMD_V1); 
@@ -115,7 +115,7 @@ E = Equity();
 n = pct_risk / 100 * E / (stoploss * PointValue) * MarginDeposit;
 //PositionSize = n;
 
-SetTradeDelays( 1, 1, 0, 0 );
+SetTradeDelays( 1, 0, 1, 0 );
 if( GetDatabaseName() == "eSignal" )
 {
 BuyPrice = ShortPrice = Foreign("ALSI5M", "O", 0);
