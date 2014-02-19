@@ -111,8 +111,8 @@ Cover = ExRem( Cover, Short);
 //POSITION SIZING ---------------------------------------------------------
 stoploss = IIf(TradeType > 0, abs(C-TrailStopLong ), abs(C-TrailStopShort ));
 pct_risk = 4;//from system backtest using 1 contract, then using http://www.albionresearch.com/kelly/default.php
-E = Equity();
-n = pct_risk / 100 * E / (stoploss * PointValue) * MarginDeposit;
+E = 250000;//Equity();
+n = Min((pct_risk / 100 * E / (stoploss * PointValue) * MarginDeposit) / E, 1) * E;
 //PositionSize = n;
 
 SetTradeDelays( 1, 0, 1, 0 );
@@ -142,11 +142,15 @@ deltastopshort = Ref(TrailStopShort, -1) - Ref(TrailStopShort, -2);
 stoppointslong = Ref(C, -1) - Ref(TrailStopLong, -1);
 stoppointsshort = Ref(TrailStopShort, -1) - Ref(C, -1);
 
+contracts = int(n / MarginDeposit);
+risk = contracts * stoppointslong * PointValue;
+realpercentrisk = risk / E * 100;
+
 //PLOTS -----------------------------------------------------------------------------
 P = (H+L+C+C)/4;
 
 _N(Title = StrFormat(_DEFAULT_NAME() + " | {{NAME}} - {{INTERVAL}} | {{DATE}} | P %g | Open %g | High %g | Low %g | Close %g (%.1f%%) |"
-  + "\n      PositionSize: " + WriteVal( n, 1.2 ) + " | Equity: " + WriteVal(E, 1.0)
+  + "\n      PositionSize: " + WriteVal( n, 1.2 ) + " | Equity: " + WriteVal(E, 1.0) + " | Contracts: " + WriteVal(contracts, 1.0) + " | Risk: " + WriteVal(risk, 1.0)+ " | %Risk: " + WriteVal(realpercentrisk, 1.0) + " | %Half K Risk: " + WriteVal(pct_risk, 1.0)
   + "\n      Stop Points Long: " + WriteVal( stoppointslong , 1.0 ) + " (" +  WriteVal( deltastoplong , 1.0 ) + ") | Stop Points Short: " + WriteVal(stoppointsshort, 1.0) + " (" +  WriteVal( deltastopshort , 1.0 ) + ")"
   + "\n      Vol: " + WriteVal( V, 1.0 ) +" {{VALUES}}", P, O, H, L, C, SelectedValue( ROC( C, 1 )) ));
 
