@@ -16,16 +16,28 @@ SecNumber = GetSecondNum();
 Newperiod = SecNumber % TimeFrame == 0;
 SecsLeft	 = SecNumber - int( SecNumber / TimeFrame ) * TimeFrame;
 SecsToGo	 = TimeFrame - SecsLeft;
+MinsToGo =  SecsToGo / 60;
+
+if ( SecsToGo == 15)
+{
+	Say( "Beep, Beep, Beep, Beep Beep." );
+}
+
+if ( SecsToGo <= 15)
+{
+	Plot( 2, "", colorOrange, styleArea | styleOwnScale, 0, 1 );
+}
+
  
 if ( NewPeriod )
 {
-    Say( "Beep, Beep Beep. Beep." );
+    Say( "Beep, Beep Beep. Beep Beep Beep." );
     Plot( 1, "", colorYellow, styleArea | styleOwnScale, 0, 1 );
 }
  
 Title = "  Current Time: " + Now( 2 ) + "     " +
         "  Chart Interval: " + NumToStr( TimeFrame, 1.0 ) + " Seconds" + "     " +
-//        " Second Number: " + NumToStr( SecNumber, 1.0, False ) + "\n" +
+//        " Second Number: " + NumToStr( SecNumber, 1.0, False ) + "\n" + "     " +
         "  Seconds Elapsed: " + NumToStr( SecsLeft, 1.0, False ) + "     " +
         "  Seconds To Go: " + NumToStr( SecsToGo, 1.0, False )    + "     " +
-        "  Minutes To Go: " + NumToStr( SecsToGo / 60, 1.0, False );
+        "  Minutes To Go: " + NumToStr( MinsToGo, 1.0, False ) ;

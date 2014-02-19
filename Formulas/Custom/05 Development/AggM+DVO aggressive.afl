@@ -3,7 +3,7 @@ SetOption( "FuturesMode", True );
 
 if( GetDatabaseName() == "eSignal" )
 {
-SetOption( "InitialEquity", 150000 );
+SetOption( "InitialEquity", 250000 );
 MarginDeposit = 25000;
 RoundLotSize = 1;
 PointValue = 10;
@@ -31,10 +31,10 @@ SetOption( "CommissionAmount", 14 );
 NumberContracts = 1;
 PositionSize = MarginDeposit * NumberContracts;
 
-//OptimizerSetEngine("trib");
+OptimizerSetEngine("trib");
 //SYSTEM -----------------------------------------------------------------------
-AMD_am1 				= Optimize("am1", 0.35, 0, 1, 0.05);   //for FEB LIVE testing Leave at 0.35
-AMD_dvo_const  	= Optimize("dvo_const", 0.95, 0, 1, 0.05); //for FEB LIVE testing Leave at 0.95
+AMD_am1 				= Optimize("am1", 0.35, 0, 1, 0.05);
+AMD_dvo_const  	= Optimize("dvo_const", 0.95, 0, 1, 0.05);
 AMD_s1 				= 5;//Optimize("s1", 5, 5, 13, 0.5);
 
 AMD_am2 = 1 - AMD_am1;
@@ -91,14 +91,17 @@ dvo_constants = (w1 + w2 + w3 + w4)==1 AND w4 > w1;
 
 //TRAILING STOPS ------------------------------------------------------------------
 TrailStopLong = HHV( C - AMD_stop_level * ATR(AMD_p_trail), AMD_p_trail );
+//ProfitTakerLong = EMA( H, AMD_p_trail ) + AMD_stop_level * ATR(AMD_p_trail);
+
 TrailStopShort = LLV( C + AMD_stop_level * ATR(AMD_p_trail), AMD_p_trail );
+//ProfitTakerShort = EMA( L, AMD_p_trail ) - AMD_stop_level * ATR(AMD_p_trail);
 
 //ENTRY RULES ------------------------------------------------------------------
 Buy = TradeType > 0 AND dvo < 35 AND C > TrailStopLong AND dvo_constants == True AND aggm_constants == 1;
 Short = TradeType <= 0 AND dvo > 65 AND C < TrailStopShort AND dvo_constants == 1 AND aggm_constants == 1;
 
-Sell = C < Ref(TrailStopLong, -1);
-Cover = C > Ref(TrailStopShort, -1);
+Sell = C < Ref(TrailStopLong, -1) OR (Ref(C, -2) > Ref(TrailStopShort, -2) AND Ref(C, -1) < Ref(TrailStopShort, -1));
+Cover = C > Ref(TrailStopShort, -1) OR (Ref(C, -2) < Ref(TrailStopLong, -2) AND Ref(C, -1) > Ref(TrailStopLong, -1));
 
 Buy   = ExRem( Buy, Sell);
 Sell   = ExRem( Sell, Buy);
@@ -107,10 +110,10 @@ Cover = ExRem( Cover, Short);
 
 //POSITION SIZING ---------------------------------------------------------
 stoploss = IIf(TradeType > 0, abs(C-TrailStopLong ), abs(C-TrailStopShort ));
-pct_risk = 10;//from system backtest using 1 contract, then using http://www.albionresearch.com/kelly/default.php
-E = Equity();
+pct_risk = 4;//from system backtest using 1 contract, then using http://www.albionresearch.com/kelly/default.php
+E = 250000;//Equity();
 n = Min((pct_risk / 100 * E / (stoploss * PointValue) * MarginDeposit) / E, 1) * E;
-PositionSize = n;
+//PositionSize = n;
 
 SetTradeDelays( 1, 0, 1, 0 );
 if( GetDatabaseName() == "eSignal" )
