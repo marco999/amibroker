@@ -1,4 +1,4 @@
-SetChartBkGradientFill( ParamColor("BgTop", colorGrey40),ParamColor("BgBottom", colorIndigo));
+SetChartBkGradientFill( ParamColor("BgTop", colorIndigo),ParamColor("BgBottom", colorIndigo));
 
 function GetSecondNum()
 {
@@ -23,11 +23,9 @@ if ( NewPeriod )
     Plot( 1, "", colorYellow, styleArea | styleOwnScale, 0, 1 );
 }
  
-Title = "\n" +
- 
-        "  Current Time: " + Now( 2 ) + "     " +
-        "Chart Interval: " + NumToStr( TimeFrame, 1.0 ) + " Seconds\n" +
+Title = "  Current Time: " + Now( 2 ) + "     " +
+        "  Chart Interval: " + NumToStr( TimeFrame, 1.0 ) + " Seconds" + "     " +
 //        " Second Number: " + NumToStr( SecNumber, 1.0, False ) + "\n" +
         "  Seconds Elapsed: " + NumToStr( SecsLeft, 1.0, False ) + "     " +
-        " Seconds To Go: " + NumToStr( SecsToGo, 1.0, False )    + "     " +
-        " Minutes To Go: " + NumToStr( SecsToGo / 60, 1.0, False );
+        "  Seconds To Go: " + NumToStr( SecsToGo, 1.0, False )    + "     " +
+        "  Minutes To Go: " + NumToStr( SecsToGo / 60, 1.0, False );

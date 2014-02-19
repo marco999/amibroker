@@ -35,7 +35,7 @@ OptimizerSetEngine("trib");
 //SYSTEM -----------------------------------------------------------------------
 AMD_am1 				= Optimize("am1", 0.35, 0, 1, 0.05);
 AMD_dvo_const  	= Optimize("dvo_const", 0.95, 0, 1, 0.05);
-AMD_s1 				= 5;//Optimize("s1", 5, 5, 13, 0.5);
+AMD_s1 				= Optimize("s1", 5, 5, 13, 0.5);
 
 AMD_am2 = 1 - AMD_am1;
 AMD_V1 = 55; AMD_V2 = 13;
@@ -118,36 +118,31 @@ n = pct_risk / 100 * E / (stoploss * PointValue) * MarginDeposit;
 SetTradeDelays( 1, 0, 1, 0 );
 if( GetDatabaseName() == "eSignal" )
 {
-fO = Foreign("ALSI5M", "O", 0);
+BuyPrice = ShortPrice = Foreign("ALSI5M", "O", 0);
 fC = Foreign("ALSI5M", "C", 0);
-BuyPrice = ShortPrice = (fO + fC)/2;
 TrailStopLongF = HHV( fC - AMD_stop_level * ATR(AMD_p_trail), AMD_p_trail );
 TrailStopShortF = LLV( fC + AMD_stop_level * ATR(AMD_p_trail), AMD_p_trail );
 SellPrice = Ref(TrailStopLongF, -1);
 CoverPrice = Ref(TrailStopShortF, -1);
 }
-else {
+else if( GetDatabaseName() == "eSignal" )
+{
+BuyPrice = ShortPrice = Foreign("ALSI1D", "O", 0);
+fC = Foreign("ALSI1D", "C", 0);
+TrailStopLongF = HHV( fC - AMD_stop_level * ATR(AMD_p_trail), AMD_p_trail );
+TrailStopShortF = LLV( fC + AMD_stop_level * ATR(AMD_p_trail), AMD_p_trail );
+SellPrice = Ref(TrailStopLongF, -1);
+CoverPrice = Ref(TrailStopShortF, -1);
+} else {
 BuyPrice = ShortPrice = Open;
 SellPrice = Ref(TrailStopLong, -1);
 CoverPrice = Ref(TrailStopShort, -1);
 }
-Filter=1;
-AddColumn( BuyPrice, "BuyPrice", 1.0 );
-AddColumn( SellPrice, "SellPrice", 1.0 );
-AddColumn( ShortPrice, "ShortPrice", 1.0 );
-AddColumn( CoverPrice, "CoverPrice", 1.0 );
-
-deltastoplong = Ref(TrailStopLong, -1) - Ref(TrailStopLong, -2);
-deltastopshort = Ref(TrailStopShort, -1) - Ref(TrailStopShort, -2);
-stoppointslong = Ref(C, -1) - Ref(TrailStopLong, -1);
-stoppointsshort = Ref(TrailStopShort, -1) - Ref(C, -1);
-
 //PLOTS -----------------------------------------------------------------------------
 P = (H+L+C+C)/4;
 
 _N(Title = StrFormat(_DEFAULT_NAME() + " | {{NAME}} - {{INTERVAL}} | {{DATE}} | P %g | Open %g | High %g | Low %g | Close %g (%.1f%%) |"
-  + "\n      PositionSize: " + WriteVal( n, 1.2 ) + " | Equity: " + WriteVal(E, 1.0)
-  + "\n      Stop Points Long: " + WriteVal( stoppointslong , 1.0 ) + " (" +  WriteVal( deltastoplong , 1.0 ) + ") | Stop Points Short: " + WriteVal(stoppointsshort, 1.0) + " (" +  WriteVal( deltastopshort , 1.0 ) + ")"
+  + "\n      PositionSize: " + WriteVal( n, 1.2 ) + " | Equity: " + WriteVal(E, 1.2)
   + "\n      Vol: " + WriteVal( V, 1.0 ) +" {{VALUES}}", P, O, H, L, C, SelectedValue( ROC( C, 1 )) ));
 
 Plot( C, "Close", colorBlack, styleCandle); 
