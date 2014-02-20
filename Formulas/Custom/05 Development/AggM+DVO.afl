@@ -1,5 +1,6 @@
 //TESTING ----------------------------------------------------------------------------
 SetOption( "FuturesMode", True );
+//SetTradeDelays( 1, 1, 1, 1 );
 
 if( GetDatabaseName() == "eSignal" )
 {
@@ -31,10 +32,10 @@ SetOption( "CommissionAmount", 14 );
 NumberContracts = 1;
 PositionSize = MarginDeposit * NumberContracts;
 
-//OptimizerSetEngine("trib");
+OptimizerSetEngine("trib");
 //SYSTEM -----------------------------------------------------------------------
-AMD_am1 				= Optimize("am1", 0.35, 0, 1, 0.05);   //for FEB LIVE testing Leave at 0.35
-AMD_dvo_const  	= Optimize("dvo_const", 0.95, 0, 1, 0.05); //for FEB LIVE testing Leave at 0.95
+AMD_am1 				= Optimize("am1", 0.5, 0, 1, 0.1);   //for FEB LIVE testing Leave at 0.35
+AMD_dvo_const  	= Optimize("dvo_const", 0.5, 0, 2, 0.1); //for FEB LIVE testing Leave at 0.95
 AMD_s1 				= 5;//Optimize("s1", 5, 5, 13, 0.5);
 
 AMD_am2 = 1 - AMD_am1;
@@ -46,7 +47,7 @@ AMD_dvo_ma1 = 2; AMD_dvo_ma2 = 13;
 
 AMD_bull1 = 65; AMD_bear1 = 100 - AMD_bull1;
 
-AMD_stop_level = 2; 
+AMD_stop_level = Optimize("stop_level", 2, 0, 5, 0.25); 
 AMD_p_trail = 13;
 
 //AggM   -----------------------------------------------------------------------
@@ -92,61 +93,75 @@ dvo_constants = (w1 + w2 + w3 + w4)==1 AND w4 > w1;
 //TRAILING STOPS ------------------------------------------------------------------
 TrailStopLong = HHV( C - AMD_stop_level * ATR(AMD_p_trail), AMD_p_trail );
 TrailStopShort = LLV( C + AMD_stop_level * ATR(AMD_p_trail), AMD_p_trail );
-
-//ENTRY RULES ------------------------------------------------------------------
-Buy = TradeType > 0 AND dvo < 35 AND C > TrailStopLong AND dvo_constants == True AND aggm_constants == 1;
-Short = TradeType <= 0 AND dvo > 65 AND C < TrailStopShort AND dvo_constants == 1 AND aggm_constants == 1;
-
-Sell = C < Ref(TrailStopLong, -1);
-Cover = C > Ref(TrailStopShort, -1);
-
-Buy   = ExRem( Buy, Sell);
-Sell   = ExRem( Sell, Buy);
-Short = ExRem( Short, Cover);
-Cover = ExRem( Cover, Short);
-
-//POSITION SIZING ---------------------------------------------------------
-stoploss = IIf(TradeType > 0, abs(C-TrailStopLong ), abs(C-TrailStopShort ));
-pct_risk = 10;//from system backtest using 1 contract, then using http://www.albionresearch.com/kelly/default.php
-E = Equity();
-n = Min((pct_risk / 100 * E / (stoploss * PointValue) * MarginDeposit) / E, 1) * E;
-PositionSize = n;
-
-SetTradeDelays( 1, 0, 1, 0 );
-if( GetDatabaseName() == "eSignal" )
-{
-fO = Foreign("ALSI5M", "O", 0);
-fC = Foreign("ALSI5M", "C", 0);
-BuyPrice = ShortPrice = (fO + fC)/2;
-TrailStopLongF = HHV( fC - AMD_stop_level * ATR(AMD_p_trail), AMD_p_trail );
-TrailStopShortF = LLV( fC + AMD_stop_level * ATR(AMD_p_trail), AMD_p_trail );
-SellPrice = Ref(TrailStopLongF, -1);
-CoverPrice = Ref(TrailStopShortF, -1);
-}
-else {
-BuyPrice = ShortPrice = Open;
-SellPrice = Ref(TrailStopLong, -1);
-CoverPrice = Ref(TrailStopShort, -1);
-}
-Filter=1;
-AddColumn( BuyPrice, "BuyPrice", 1.0 );
-AddColumn( SellPrice, "SellPrice", 1.0 );
-AddColumn( ShortPrice, "ShortPrice", 1.0 );
-AddColumn( CoverPrice, "CoverPrice", 1.0 );
-
 deltastoplong = Ref(TrailStopLong, -1) - Ref(TrailStopLong, -2);
 deltastopshort = Ref(TrailStopShort, -1) - Ref(TrailStopShort, -2);
-stoppointslong = Ref(C, -1) - Ref(TrailStopLong, -1);
-stoppointsshort = Ref(TrailStopShort, -1) - Ref(C, -1);
+stoppointslong = Max(0, C - TrailStopLong);
+stoppointsshort = Max(0, TrailStopShort - C);
+
+//ENTRY RULES ------------------------------------------------------------------
+Buy = TradeType > 0 AND dvo < 50 AND C > TrailStopLong AND dvo_constants == True AND aggm_constants == 1 AND stoppointslong > 30;;
+Short = TradeType <= 0 AND dvo > 50 AND C < TrailStopShort AND dvo_constants == 1 AND aggm_constants == 1 AND stoppointsshort > 30;
+
+BuyShort = Flip(Buy, Short);
+
+Sell = 0;// only by stop
+Cover = 0;// only by stop
+stoploss = IIf(BuyShort > 0, stoppointslong ,stoppointsshort );
+
+//for the graph
+plotBuy = Buy;
+PlotShort = Short;
+plotSell = C < Ref(TrailStopLong, -1); 
+plotCover = C > Ref(TrailStopShort, -1);
+
+plotBuy   = ExRem( plotBuy, plotSell);
+plotSell  = ExRem( plotSell, plotBuy);
+plotShort = ExRem( plotShort, plotCover);
+plotCover = ExRem( plotCover, plotShort);
+
+//POSITION SIZING ---------------------------------------------------------
+E = Equity();
+
+
+
+pct_risk = 3;//from system backtest using 1 contract, then using http://www.albionresearch.com/kelly/default.php
+n = Min((pct_risk / 100 * E / (stoploss * PointValue) * MarginDeposit) / E, 1) * E;
+//PositionSize = n;
 
 contracts = int(n / MarginDeposit);
-risk = contracts * stoppointslong * PointValue;
+risk = contracts * stoploss * PointValue;
 realpercentrisk = risk / E * 100;
+
+/*Note on using stops:
+you trade on next bar Open AND want to exit intraday on stop price
+Correct settings: 
+ActivateStopsImmediately turned ON
+ExitAtStop = 1
+Trade delays set to one
+Trade price set to Open
+*/
+
+ApplyStop( stopTypeTrailing, stopModePoint, stoploss, 1, True );
+
+
+if( GetDatabaseName() == "eSignal" AND Name() == "$J200-FTSE")
+{
+/* NB Hack for weird AB behaviour
+I set this to Close, then it picks the field you specify in the backtester settings, 
+which is Open */
+//fO = Foreign("ALSI5M", "Close", 1); 
+//BuyPrice = fO;
+/* end hack */
+}
+
+Filter=1;
+AddColumn( stoploss , "stoploss", 1.0 );
 
 //PLOTS -----------------------------------------------------------------------------
 P = (H+L+C+C)/4;
 
 _N(Title = StrFormat(_DEFAULT_NAME() + " | {{NAME}} - {{INTERVAL}} | {{DATE}} | P %g | Open %g | High %g | Low %g | Close %g (%.1f%%)"
+  + "\n      stoploss : " + WriteVal( stoploss , 1.0 ) + " | BuyShort " + WriteVal(BuyShort, 1.0)
   + "\n      PositionSize: " + WriteVal( n, 1.2 ) + " | Equity: " + WriteVal(E, 1.0) + " | Contracts: " + WriteVal(contracts, 1.0) + " | Risk: " + WriteVal(risk, 1.0)+ " | %Risk: " + WriteVal(realpercentrisk, 1.0) + " | %Half K Risk: " + WriteVal(pct_risk, 1.0)
   + "\n      Stop Points Long: " + WriteVal( stoppointslong , 1.0 ) + " (" +  WriteVal( deltastoplong , 1.0 ) + ") | Stop Points Short: " + WriteVal(stoppointsshort, 1.0) + " (" +  WriteVal( deltastopshort , 1.0 ) + ")"
   + "\n      Vol: " + WriteVal( V, 1.0 ) +" {{VALUES}}", P, O, H, L, C, SelectedValue( ROC( C, 1 )) ));
@@ -159,14 +174,12 @@ IIf( TradeType>0, colorGreen, IIf( TradeType<=0, colorRed, 0 )),
 styleOwnScale|styleArea|styleNoLabel, -0.5, 100 );
 
 Plot( TrailStopLong, "Trailing stop long", colorBrown, styleLine );
-//Plot( ProfitTakerLong, "Profit taker long", colorLime, styleThick );
 Plot( TrailStopShort, "Trailing stop short", colorBlueGrey, styleLine );
-//Plot( ProfitTakerShort, "Profit taker short", colorRed, styleThick );
 
-PlotShapes(Buy * (shapeCircle + shapePositionAbove), colorGold);
-PlotShapes(Short * (shapeCircle), colorOrange);
-PlotShapes(Sell * (shapeHollowCircle + shapePositionAbove), colorGold);
-PlotShapes(Cover * (shapeHollowCircle), colorOrange);
+PlotShapes(plotBuy * (shapeCircle + shapePositionAbove), colorGold);
+PlotShapes(plotShort * (shapeCircle), colorOrange);
+PlotShapes(plotSell * (shapeHollowCircle + shapePositionAbove), colorGold);
+PlotShapes(plotCover * (shapeHollowCircle), colorOrange);
 
 Plot( Volume, _DEFAULT_NAME(), IIf(C<O,colorRed, colorGreen), styleNoTitle | ParamStyle( "Style", styleHistogram | styleOwnScale | styleThick | styleNoLabel, maskHistogram  ), 3 );
 
